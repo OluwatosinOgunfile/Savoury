@@ -1,0 +1,6 @@
+@echo off
+cd /d "%~dp0"
+npm.cmd run dev -- --host 127.0.0.1
+echo.
+echo Localhost server stopped or failed to start.
+pause
