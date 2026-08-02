@@ -31,9 +31,17 @@ export type FoodCategory =
   | "Medium"
   | "Large"
   | "Burgers"
+  | "Pasta"
+  | "Sides"
+  | "Breakfast"
+  | "Extras"
+  | "Combos"
   | "Drinks"
   | "Smoothies"
-  | "Desserts";
+  | "Desserts"
+  | "Efo Riro"
+  | "Ewedu"
+  | "Edikang Ikong";
 
 export interface Category {
   id: string;

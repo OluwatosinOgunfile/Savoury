@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "schema:supabase": "node scripts/apply-schema.mjs",
     "seed:supabase": "node scripts/seed-supabase.mjs",
+    "seed:price-list": "node scripts/seed-price-list.mjs",
     "admin:create": "node scripts/create-admin.mjs",
     "preview": "vite preview",
     "lint": "eslint ."
