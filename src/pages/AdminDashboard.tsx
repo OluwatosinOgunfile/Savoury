@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 import { Activity, BarChart3, CheckCircle2, Clock, ListChecks, PackagePlus, Star, Users, XCircle, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -41,10 +42,16 @@ export function AdminDashboard() {
   const [adminFoods, setAdminFoods] = useState<Food[]>(() => mergeAdminFoods(menuFoods));
   const [orderSearch, setOrderSearch] = useState("");
   const [feedback, setFeedback] = useState("Ready to manage today's operations.");
+  const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
     setAdminFoods(mergeAdminFoods(menuFoods));
   }, [menuFoods]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 30000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -128,14 +135,28 @@ export function AdminDashboard() {
             <div className="overflow-x-auto">
               <table className="w-full min-w-[820px] text-left text-sm">
                 <thead className="text-xs uppercase text-zinc-400">
-                  <tr><th className="py-3">Order</th><th>Customer</th><th>Status</th><th>Total</th><th>Update</th><th>Actions</th></tr>
+                  <tr><th className="py-3">Order</th><th>Customer</th><th>Status</th><th>Placed</th><th>Total</th><th>Update</th><th>Actions</th></tr>
                 </thead>
                 <tbody>
                   {filteredOrders.map((order) => (
                     <tr key={order.id} className="border-t border-zinc-100 dark:border-white/10">
-                      <td className="py-4 font-black">{order.id}</td>
+                      <td className="py-4 font-black">
+                        <Link className="text-savoury-primary underline-offset-4 transition hover:underline" to={`/admin/orders/${order.id}`}>
+                          {order.id}
+                        </Link>
+                      </td>
                       <td>{order.customerName}<p className="text-xs text-zinc-500">{order.phone}</p></td>
                       <td><StatusPill status={order.status} /></td>
+                      <td>
+                        {order.status === "pending" ? (
+                          <div>
+                            <p className="font-black text-savoury-primary">{formatWaitingTime(order.createdAt, now)}</p>
+                            <p className="text-xs font-bold text-zinc-500">waiting</p>
+                          </div>
+                        ) : (
+                          <span className="text-xs font-bold text-zinc-400">{formatOrderTime(order.createdAt)}</span>
+                        )}
+                      </td>
                       <td className="font-black">{formatCurrency(order.total)}</td>
                       <td>
                         {order.status !== "pending" && order.status !== "rejected" ? (
@@ -241,6 +262,27 @@ function StatusPill({ status }: { status: AdminOrderStatus }) {
 
   const tone = status === "rejected" ? "bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-300" : "bg-savoury-accent text-savoury-primary dark:bg-savoury-primary/10";
   return <span className={`rounded-full px-3 py-1 font-black capitalize ${tone}`}>{status.replace(/_/g, " ")}</span>;
+}
+
+function formatOrderTime(createdAt: string) {
+  return new Intl.DateTimeFormat("en-NG", {
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(createdAt));
+}
+
+function formatWaitingTime(createdAt: string, now: number) {
+  const elapsedSeconds = Math.max(0, Math.floor((now - new Date(createdAt).getTime()) / 1000));
+  if (elapsedSeconds < 60) return `${elapsedSeconds} sec`;
+
+  const elapsedMinutes = Math.floor(elapsedSeconds / 60);
+  if (elapsedMinutes < 60) return `${elapsedMinutes} min`;
+
+  const elapsedHours = Math.floor(elapsedMinutes / 60);
+  if (elapsedHours < 24) return `${elapsedHours} hr`;
+
+  const elapsedDays = Math.floor(elapsedHours / 24);
+  return `${elapsedDays} day${elapsedDays === 1 ? "" : "s"}`;
 }
 
 function Metric({ label, value }: { label: string; value: number }) {
