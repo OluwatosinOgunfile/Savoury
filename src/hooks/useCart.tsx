@@ -1,5 +1,6 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
-import { coupons } from "@/data/catalog";
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { coupons as fallbackCoupons } from "@/data/catalog";
+import { fetchCoupons } from "@/services/foodService";
 import type { CartItem, Coupon, Food } from "@/types";
 
 interface CartContextValue {
@@ -23,6 +24,17 @@ const CartContext = createContext<CartContextValue | null>(null);
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [coupon, setCoupon] = useState<Coupon | undefined>();
+  const [coupons, setCoupons] = useState<Coupon[]>(fallbackCoupons);
+
+  useEffect(() => {
+    let mounted = true;
+    fetchCoupons().then((nextCoupons) => {
+      if (mounted) setCoupons(nextCoupons);
+    });
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const addItem = (food: Food, quantity = 1) => {
     setItems((current) => {

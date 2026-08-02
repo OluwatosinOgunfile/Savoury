@@ -27,8 +27,10 @@ import {
 import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { categories, foods, restaurantSettings } from "@/data/catalog";
+import { useAuth } from "@/hooks/useAuth";
 import { useCart } from "@/hooks/useCart";
 import { formatCurrency } from "@/lib/utils";
+import { setFavoriteFood } from "@/services/favoriteService";
 import { fetchCategories, fetchFoods, fetchRestaurantSettings, foodKeys } from "@/services/foodService";
 import type { Category, Food } from "@/types";
 
@@ -82,7 +84,7 @@ export function HomePage() {
     tagline: dbSettings?.tagline || restaurantSettings.tagline,
     logoUrl: referenceHeroImage,
     openingHours: dbSettings?.opening_hours || restaurantSettings.openingHours,
-    deliveryFee: Number(dbSettings?.delivery_fee || 500),
+    deliveryFee: Number(dbSettings?.delivery_base_fee || 500),
     deliveryMin: Number(dbSettings?.estimated_delivery_min || 25),
     deliveryMax: Number(dbSettings?.estimated_delivery_max || 45),
   };
@@ -253,7 +255,17 @@ function HeroStat({ icon: Icon, label, sub }: { icon: LucideIcon; label: string;
 
 function DarkFoodCard({ food, badge, compact = false, index = 0 }: { food: Food; badge?: string; compact?: boolean; index?: number }) {
   const { addItem } = useCart();
+  const { user } = useAuth();
   const [favorite, setFavorite] = useState(false);
+  const toggleFavorite = async () => {
+    const nextFavorite = !favorite;
+    setFavorite(nextFavorite);
+    try {
+      await setFavoriteFood(user?.id, food.id, nextFavorite);
+    } catch {
+      setFavorite(favorite);
+    }
+  };
 
   return (
     <motion.article initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05, duration: 0.3 }} className="group overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-soft transition-all duration-300 hover:-translate-y-1 hover:shadow-premium dark:border-white/5 dark:bg-[#242424]">
@@ -265,7 +277,7 @@ function DarkFoodCard({ food, badge, compact = false, index = 0 }: { food: Food;
         <button
           aria-label={`${favorite ? "Remove from" : "Add to"} favorites: ${food.name}`}
           className={`absolute right-3 top-3 grid h-8 w-8 place-items-center rounded-full bg-white/90 transition ${favorite ? "text-savoury-primary" : "text-zinc-600 hover:text-savoury-primary"}`}
-          onClick={() => setFavorite(!favorite)}
+          onClick={toggleFavorite}
         >
           <Heart className={`h-4 w-4 ${favorite ? "fill-current" : ""}`} />
         </button>

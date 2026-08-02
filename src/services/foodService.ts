@@ -1,19 +1,17 @@
-import { categories, foods, reviews } from "@/data/catalog";
+import { categories, coupons, foods, reviews } from "@/data/catalog";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
-import type { Category, Food, Review } from "@/types";
+import type { Category, Coupon, Food, FoodCategory, Review } from "@/types";
 
 export const foodKeys = {
   all: ["foods"] as const,
   categories: ["categories"] as const,
   settings: ["restaurant-settings"] as const,
   reviews: (foodId: string) => ["reviews", foodId] as const,
+  coupons: ["coupons"] as const,
 };
 
-export async function fetchFoods(): Promise<Food[]> {
-  if (!isSupabaseConfigured || !supabase) return foods;
-  const { data, error } = await supabase.from("foods").select("*, categories(name)").order("popularity", { ascending: false });
-  if (error) throw error;
-  return data.map((food) => ({
+function mapFood(food: any): Food {
+  return {
     id: food.id,
     name: food.name,
     slug: food.slug,
@@ -32,7 +30,14 @@ export async function fetchFoods(): Promise<Food[]> {
     isRecommended: food.is_recommended,
     isTrending: food.popularity > 100,
     isNew: food.popularity < 75,
-  })) as Food[];
+  } as Food;
+}
+
+export async function fetchFoods(): Promise<Food[]> {
+  if (!isSupabaseConfigured || !supabase) return foods;
+  const { data, error } = await supabase.from("foods").select("*, categories(name)").order("popularity", { ascending: false });
+  if (error) throw error;
+  return data.map(mapFood);
 }
 
 export async function fetchCategories(): Promise<Category[]> {
@@ -46,6 +51,71 @@ export async function fetchCategories(): Promise<Category[]> {
     icon: category.icon || "Utensils",
     description: category.description || "",
   })) as Category[];
+}
+
+export async function fetchCoupons(): Promise<Coupon[]> {
+  if (!isSupabaseConfigured || !supabase) return coupons;
+  const { data, error } = await supabase
+    .from("coupons")
+    .select("code, discount_type, value, min_order")
+    .eq("is_active", true)
+    .order("code");
+  if (error) {
+    console.warn("Could not load Supabase coupons. Falling back to mock coupons.", error);
+    return coupons;
+  }
+
+  return data.map((coupon) => ({
+    code: coupon.code,
+    label:
+      coupon.discount_type === "percentage"
+        ? `${Number(coupon.value)}% off orders above NGN ${Number(coupon.min_order).toLocaleString()}`
+        : `NGN ${Number(coupon.value).toLocaleString()} off orders above NGN ${Number(coupon.min_order).toLocaleString()}`,
+    discountType: coupon.discount_type,
+    value: Number(coupon.value),
+    minOrder: Number(coupon.min_order),
+  })) as Coupon[];
+}
+
+export async function saveFoodToDatabase(food: Food): Promise<Food> {
+  if (!isSupabaseConfigured || !supabase) return food;
+
+  const { data: category } = await supabase.from("categories").select("id").eq("name", food.category).maybeSingle();
+  const payload: Record<string, unknown> = {
+    category_id: category?.id || null,
+    name: food.name,
+    slug: food.slug,
+    description: food.description,
+    price: food.price,
+    image_url: food.image,
+    ingredients: food.ingredients,
+    calories: food.calories,
+    preparation_time: food.prepTime,
+    rating: food.rating,
+    popularity: food.popularity,
+    is_available: true,
+    is_special: Boolean(food.isSpecial),
+    is_recommended: Boolean(food.isRecommended),
+  };
+
+  const { data, error } = await supabase
+    .from("foods")
+    .upsert(food.id.startsWith("admin-") ? payload : { id: food.id, ...payload }, { onConflict: "slug" })
+    .select("*, categories(name)")
+    .single();
+
+  if (error) throw error;
+  return mapFood(data);
+}
+
+export async function deleteFoodFromDatabase(foodId: string) {
+  if (!isSupabaseConfigured || !supabase) return;
+  const { error } = await supabase.from("foods").delete().eq("id", foodId);
+  if (error) throw error;
+}
+
+export function isKnownFoodCategory(value: string): value is FoodCategory {
+  return categories.some((category) => category.name === value);
 }
 
 export async function fetchReviews(foodId: string): Promise<Review[]> {

@@ -8,8 +8,10 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
 import { foods, reviews } from "@/data/catalog";
+import { useAuth } from "@/hooks/useAuth";
 import { useCart } from "@/hooks/useCart";
 import { formatCurrency } from "@/lib/utils";
+import { setFavoriteFood } from "@/services/favoriteService";
 import { fetchFoods, fetchReviews, foodKeys } from "@/services/foodService";
 
 export function FoodDetailsPage() {
@@ -17,12 +19,23 @@ export function FoodDetailsPage() {
   const { data: menuFoods = foods } = useQuery({ queryKey: foodKeys.all, queryFn: fetchFoods });
   const food = menuFoods.find((item) => item.slug === slug) || menuFoods[0] || foods[0];
   const [quantity, setQuantity] = useState(1);
+  const [favorite, setFavorite] = useState(false);
   const { addItem } = useCart();
+  const { user } = useAuth();
   const related = useMemo(() => menuFoods.filter((item) => item.category === food.category && item.id !== food.id).slice(0, 4), [food, menuFoods]);
   const { data: foodReviews = reviews.filter((review) => review.foodId === food.id || review.foodId === "jollof-feast") } = useQuery({
     queryKey: foodKeys.reviews(food.id),
     queryFn: () => fetchReviews(food.id),
   });
+  const toggleFavorite = async () => {
+    const nextFavorite = !favorite;
+    setFavorite(nextFavorite);
+    try {
+      await setFavoriteFood(user?.id, food.id, nextFavorite);
+    } catch {
+      setFavorite(favorite);
+    }
+  };
 
   return (
     <main className="app-container py-8 text-white">
@@ -53,7 +66,7 @@ export function FoodDetailsPage() {
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-3xl font-black text-savoury-primary">{formatCurrency(food.price)}</span>
-                <Button variant="outline" size="icon" aria-label="Favorite meal"><Heart className="h-5 w-5" /></Button>
+                <Button variant="outline" size="icon" aria-label="Favorite meal" onClick={toggleFavorite}><Heart className={`h-5 w-5 ${favorite ? "fill-current text-savoury-primary" : ""}`} /></Button>
               </div>
               <div className="flex items-center gap-3">
                 <Button variant="outline" size="icon" onClick={() => setQuantity(Math.max(1, quantity - 1))}>-</Button>

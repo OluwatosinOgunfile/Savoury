@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { z } from "zod";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
@@ -9,6 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useCart } from "@/hooks/useCart";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { formatCurrency } from "@/lib/utils";
+import { accountKeys, fetchUserAddresses } from "@/services/accountDataService";
 import { saveSubmittedOrder } from "@/services/orderStorage";
 import { paymentProviders } from "@/services/payment";
 import type { DeliveryMode, PaymentMethod } from "@/types";
@@ -23,10 +25,18 @@ export function CheckoutPage() {
   const cart = useCart();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { data: savedAddresses = addresses } = useQuery({ queryKey: accountKeys.addresses(user?.id), queryFn: () => fetchUserAddresses(user?.id) });
   const [deliveryMode, setDeliveryMode] = useState<DeliveryMode>("delivery");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("card");
   const [form, setForm] = useState({ name: "Guest Customer", phone: "+234 801 000 0000", address: addresses[0].line1, instructions: "", deliveryTime: "ASAP" });
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    const defaultAddress = savedAddresses.find((address) => address.default) || savedAddresses[0];
+    if (defaultAddress && form.address === addresses[0].line1) {
+      setForm((current) => ({ ...current, address: defaultAddress.line1 }));
+    }
+  }, [form.address, savedAddresses]);
 
   const placeOrder = async () => {
     const parsed = checkoutSchema.safeParse(form);
@@ -75,6 +85,9 @@ export function CheckoutPage() {
             <Input placeholder="Customer name" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} />
             <Input placeholder="Phone number" value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} />
             <Input className="sm:col-span-2" placeholder="Delivery address" value={form.address} onChange={(event) => setForm({ ...form, address: event.target.value })} />
+            <select className="h-12 rounded-xl border border-white/10 bg-[#101010] px-4 text-sm text-white" value={form.address} onChange={(event) => setForm({ ...form, address: event.target.value })}>
+              {savedAddresses.map((address) => <option key={address.id} value={address.line1}>{address.label}: {address.line1}</option>)}
+            </select>
             <select className="h-12 rounded-xl border border-white/10 bg-[#101010] px-4 text-sm text-white" value={form.deliveryTime} onChange={(event) => setForm({ ...form, deliveryTime: event.target.value })}>
               <option>ASAP</option>
               <option>30 minutes</option>
