@@ -1,5 +1,5 @@
 import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, ImagePlus, Save } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { categories, foods } from "@/data/catalog";
 import { mergeAdminFoods, saveAdminFood } from "@/services/adminMenuStorage";
-import { fetchCategories, fetchFoods, foodKeys } from "@/services/foodService";
+import { fetchCategories, fetchFoods, foodKeys, saveFoodToDatabase } from "@/services/foodService";
 import type { Food, FoodCategory } from "@/types";
 
 interface FoodForm {
@@ -33,6 +33,7 @@ const emptyForm: FoodForm = {
 export function AdminFoodFormPage() {
   const { foodId } = useParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { data: menuFoods = foods } = useQuery({ queryKey: foodKeys.all, queryFn: fetchFoods });
   const { data: menuCategories = categories } = useQuery({ queryKey: foodKeys.categories, queryFn: fetchCategories });
   const allFoods = useMemo(() => mergeAdminFoods(menuFoods), [menuFoods]);
@@ -69,7 +70,7 @@ export function AdminFoodFormPage() {
     reader.readAsDataURL(file);
   };
 
-  const saveFood = (event: FormEvent) => {
+  const saveFood = async (event: FormEvent) => {
     event.preventDefault();
     const price = Number(form.price);
     const prepTime = Number(form.prepTime);
@@ -99,8 +100,14 @@ export function AdminFoodFormPage() {
       isNew: !existingFood,
     };
 
-    saveAdminFood(nextFood);
-    navigate("/admin", { replace: true });
+    try {
+      const savedFood = await saveFoodToDatabase(nextFood);
+      saveAdminFood(savedFood);
+      await queryClient.invalidateQueries({ queryKey: foodKeys.all });
+      navigate("/admin/menu", { replace: true });
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not save food to Supabase.");
+    }
   };
 
   return (

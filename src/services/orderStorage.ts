@@ -76,10 +76,10 @@ function getLocalOrder(payload: {
   };
 }
 
-export async function fetchAdminOrders(): Promise<StoredOrder[]> {
+export async function fetchAdminOrders(userId?: string): Promise<StoredOrder[]> {
   if (!isSupabaseConfigured || !supabase) return getAdminOrders();
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("orders")
     .select(`
       id,
@@ -119,6 +119,12 @@ export async function fetchAdminOrders(): Promise<StoredOrder[]> {
       )
     `)
     .order("created_at", { ascending: false });
+
+  if (userId) {
+    query = query.eq("user_id", userId);
+  }
+
+  const { data, error } = await query;
 
   if (error || !data) {
     console.warn("Could not load Supabase orders. Falling back to local orders.", error);
