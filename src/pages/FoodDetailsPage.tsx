@@ -1,7 +1,7 @@
 import { Link, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Clock, Flame, Heart, Star, type LucideIcon } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { FoodCard } from "@/components/FoodCard";
 import { Badge } from "@/components/ui/Badge";
@@ -20,6 +20,7 @@ export function FoodDetailsPage() {
   const food = menuFoods.find((item) => item.slug === slug) || menuFoods[0] || foods[0];
   const [quantity, setQuantity] = useState(1);
   const [favorite, setFavorite] = useState(false);
+  const [imageSrc, setImageSrc] = useState(food.image || "/images/savoury-hero.png");
   const { addItem } = useCart();
   const { user } = useAuth();
   const related = useMemo(() => menuFoods.filter((item) => item.category === food.category && item.id !== food.id).slice(0, 4), [food, menuFoods]);
@@ -27,6 +28,9 @@ export function FoodDetailsPage() {
     queryKey: foodKeys.reviews(food.id),
     queryFn: () => fetchReviews(food.id),
   });
+  useEffect(() => {
+    setImageSrc(food.image || "/images/savoury-hero.png");
+  }, [food.image]);
   const toggleFavorite = async () => {
     const nextFavorite = !favorite;
     setFavorite(nextFavorite);
@@ -41,7 +45,7 @@ export function FoodDetailsPage() {
     <main className="app-container py-8 text-white">
       <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
         <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="overflow-hidden rounded-2xl border border-white/10 bg-[#202020] shadow-premium">
-          <img src={food.image} alt={food.name} className="h-[360px] w-full object-cover lg:h-[560px]" />
+          <img src={imageSrc} alt={food.name} onError={() => setImageSrc("/images/savoury-hero.png")} className="h-[360px] w-full object-cover lg:h-[560px]" />
         </motion.div>
         <div className="space-y-5">
           <div>

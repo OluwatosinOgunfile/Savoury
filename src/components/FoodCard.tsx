@@ -15,6 +15,7 @@ export function FoodCard({ food, compact = false }: { food: Food; compact?: bool
   const { addItem } = useCart();
   const { user } = useAuth();
   const [favorite, setFavorite] = useState(false);
+  const [imageSrc, setImageSrc] = useState(food.image);
 
   const toggleFavorite = async () => {
     const nextFavorite = !favorite;
@@ -31,7 +32,7 @@ export function FoodCard({ food, compact = false }: { food: Food; compact?: bool
       <Card className="group h-full overflow-hidden border-white/10 bg-[#242424]">
         <div className={compact ? "relative h-36 overflow-hidden" : "relative h-48 overflow-hidden"}>
           <Link to={`/food/${food.slug}`} className="block h-full">
-            <img src={food.image} alt={food.name} loading="lazy" className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
+            <img src={imageSrc} alt={food.name} loading="lazy" onError={() => setImageSrc("/images/savoury-hero.png")} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
           </Link>
           <div className="absolute left-3 top-3 flex gap-2">
             {food.isSpecial && <Badge>Special</Badge>}

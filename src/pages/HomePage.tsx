@@ -257,6 +257,7 @@ function DarkFoodCard({ food, badge, compact = false, index = 0 }: { food: Food;
   const { addItem } = useCart();
   const { user } = useAuth();
   const [favorite, setFavorite] = useState(false);
+  const [imageSrc, setImageSrc] = useState(food.image || "/images/savoury-hero.png");
   const toggleFavorite = async () => {
     const nextFavorite = !favorite;
     setFavorite(nextFavorite);
@@ -271,7 +272,7 @@ function DarkFoodCard({ food, badge, compact = false, index = 0 }: { food: Food;
     <motion.article initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05, duration: 0.3 }} className="group overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-soft transition-all duration-300 hover:-translate-y-1 hover:shadow-premium dark:border-white/5 dark:bg-[#242424]">
       <div className="relative overflow-hidden">
         <Link to={`/food/${food.slug}`} className="block">
-          <img src={food.image || "/images/savoury-hero.png"} alt={food.name} loading="lazy" className={`${compact ? "h-36" : "h-44"} w-full object-cover transition-transform duration-500 ease-out group-hover:scale-110`} />
+          <img src={imageSrc} alt={food.name} loading="lazy" onError={() => setImageSrc("/images/savoury-hero.png")} className={`${compact ? "h-36" : "h-44"} w-full object-cover transition-transform duration-500 ease-out group-hover:scale-110`} />
         </Link>
         {(badge || food.isSpecial) && <span className="absolute left-3 top-3 rounded-full bg-savoury-secondary px-2 py-1 text-[10px] font-black text-zinc-950">{badge || "Special"}</span>}
         <button
