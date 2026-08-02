@@ -9,6 +9,7 @@
     "schema:supabase": "node scripts/apply-schema.mjs",
     "seed:supabase": "node scripts/seed-supabase.mjs",
     "seed:price-list": "node scripts/seed-price-list.mjs",
+    "images:remote": "node scripts/link-remote-menu-images.mjs",
     "admin:create": "node scripts/create-admin.mjs",
     "preview": "vite preview",
     "lint": "eslint ."
