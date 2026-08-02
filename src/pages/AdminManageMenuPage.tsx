@@ -90,7 +90,7 @@ export function AdminManageMenuPage() {
         {filteredFoods.map((food) => (
           <Card key={food.id}>
             <CardContent>
-              <img src={food.image} alt={food.name} className="h-48 w-full rounded-xl object-cover" />
+              <img src={food.image} alt={food.name} onError={(event) => { event.currentTarget.src = "/images/savoury-hero.png"; }} className="h-48 w-full rounded-xl object-cover" />
               <div className="mt-4 flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <h2 className="truncate text-xl font-black">{food.name}</h2>
