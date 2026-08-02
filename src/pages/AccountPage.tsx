@@ -1,17 +1,23 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { Bell, Heart, History, KeyRound, LayoutDashboard, MapPin, Settings, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
-import { addresses, foods, mockOrders, notifications } from "@/data/catalog";
 import { useAuth } from "@/hooks/useAuth";
+import { accountKeys, fetchUserAddresses, fetchUserFavorites, fetchUserNotifications, fetchUserOrderSummaries } from "@/services/accountDataService";
 
 const tabs = ["Profile", "Addresses", "Favorites", "Orders", "Notifications", "Settings"] as const;
 
 export function AccountPage() {
   const [active, setActive] = useState<(typeof tabs)[number]>("Profile");
-  const { profile, isAuthenticated, signOut } = useAuth();
+  const { profile, user, isAuthenticated, signOut } = useAuth();
+  const userId = user?.id;
+  const { data: savedAddresses = [] } = useQuery({ queryKey: accountKeys.addresses(userId), queryFn: () => fetchUserAddresses(userId) });
+  const { data: favoriteFoods = [] } = useQuery({ queryKey: accountKeys.favorites(userId), queryFn: () => fetchUserFavorites(userId) });
+  const { data: orderSummaries = [] } = useQuery({ queryKey: accountKeys.orders(userId), queryFn: () => fetchUserOrderSummaries(userId) });
+  const { data: userNotifications = [] } = useQuery({ queryKey: accountKeys.notifications(userId), queryFn: () => fetchUserNotifications(userId) });
 
   return (
     <main className="app-container grid gap-6 py-6 lg:grid-cols-[280px_1fr]">
@@ -52,10 +58,10 @@ export function AccountPage() {
         </div>
         <div className="mt-5">
           {active === "Profile" && <ProfileCard profile={profile} />}
-          {active === "Addresses" && <ListCard icon={MapPin} title="Saved Addresses" items={addresses.map((address) => `${address.label}: ${address.line1}, ${address.city}`)} />}
-          {active === "Favorites" && <ListCard icon={Heart} title="Favorite Meals" items={foods.filter((food) => food.isRecommended).slice(0, 6).map((food) => food.name)} />}
-          {active === "Orders" && <ListCard icon={History} title="Order History and Track Orders" items={mockOrders.map((order) => `${order.id}: ${order.status} - ${order.customerName}`)} />}
-          {active === "Notifications" && <ListCard icon={Bell} title="Notifications" items={notifications.map((item) => `${item.title}: ${item.body}`)} />}
+          {active === "Addresses" && <ListCard icon={MapPin} title="Saved Addresses" items={savedAddresses.map((address) => `${address.label}: ${address.line1}, ${address.city}`)} />}
+          {active === "Favorites" && <ListCard icon={Heart} title="Favorite Meals" items={favoriteFoods.map((food) => food.name)} />}
+          {active === "Orders" && <ListCard icon={History} title="Order History and Track Orders" items={orderSummaries} />}
+          {active === "Notifications" && <ListCard icon={Bell} title="Notifications" items={userNotifications.map((item) => `${item.title}: ${item.body}`)} />}
           {active === "Settings" && <ListCard icon={Settings} title="Settings" items={["Light and dark mode", "Push notification ready", "Referral code SAVOURY-FRIEND", "Loyalty rewards: 1 point per NGN 100"]} />}
         </div>
       </section>

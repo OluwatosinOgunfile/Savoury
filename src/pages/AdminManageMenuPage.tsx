@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, Edit, PackagePlus, RotateCcw, Search, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -8,11 +8,12 @@ import { Input } from "@/components/ui/Input";
 import { categories, foods } from "@/data/catalog";
 import { formatCurrency } from "@/lib/utils";
 import { deleteAdminFood, mergeAdminFoods } from "@/services/adminMenuStorage";
-import { fetchCategories, fetchFoods, foodKeys } from "@/services/foodService";
+import { deleteFoodFromDatabase, fetchCategories, fetchFoods, foodKeys } from "@/services/foodService";
 import type { Food, FoodCategory } from "@/types";
 
 export function AdminManageMenuPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { data: menuFoods = foods } = useQuery({ queryKey: foodKeys.all, queryFn: fetchFoods });
   const { data: menuCategories = categories } = useQuery({ queryKey: foodKeys.categories, queryFn: fetchCategories });
   const [adminFoods, setAdminFoods] = useState<Food[]>(() => mergeAdminFoods(menuFoods));
@@ -41,11 +42,18 @@ export function AdminManageMenuPage() {
     setFeedback("Menu manager reset to Supabase data.");
   };
 
-  const removeFood = (food: Food) => {
+  const removeFood = async (food: Food) => {
+    try {
+      await deleteFoodFromDatabase(food.id);
+      await queryClient.invalidateQueries({ queryKey: foodKeys.all });
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : "Could not delete food from Supabase.");
+      return;
+    }
     deleteAdminFood(food.id);
     setAdminFoods((current) => current.filter((item) => item.id !== food.id));
     setDeleteTarget(null);
-    setFeedback(`${food.name} deleted from the menu preview.`);
+    setFeedback(`${food.name} deleted from the foods table.`);
   };
 
   return (
@@ -113,7 +121,7 @@ export function AdminManageMenuPage() {
           <Card className="w-full max-w-md">
             <CardContent>
               <h2 className="text-xl font-black">Delete {deleteTarget.name}?</h2>
-              <p className="mt-2 text-sm font-semibold text-zinc-500">This removes the item from the admin menu preview.</p>
+              <p className="mt-2 text-sm font-semibold text-zinc-500">This removes the item from the foods table.</p>
               <div className="mt-5 flex gap-2">
                 <Button onClick={() => removeFood(deleteTarget)}>Confirm Delete</Button>
                 <Button variant="outline" onClick={() => setDeleteTarget(null)}>Cancel</Button>
