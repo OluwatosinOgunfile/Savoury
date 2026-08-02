@@ -35,7 +35,11 @@ function mapFood(food: any): Food {
 
 export async function fetchFoods(): Promise<Food[]> {
   if (!isSupabaseConfigured || !supabase) return foods;
-  const { data, error } = await supabase.from("foods").select("*, categories(name)").order("popularity", { ascending: false });
+  const { data, error } = await supabase
+    .from("foods")
+    .select("*, categories(name)")
+    .eq("is_available", true)
+    .order("popularity", { ascending: false });
   if (error) throw error;
   return data.map(mapFood);
 }
@@ -110,7 +114,7 @@ export async function saveFoodToDatabase(food: Food): Promise<Food> {
 
 export async function deleteFoodFromDatabase(foodId: string) {
   if (!isSupabaseConfigured || !supabase) return;
-  const { error } = await supabase.from("foods").delete().eq("id", foodId);
+  const { error } = await supabase.from("foods").update({ is_available: false }).eq("id", foodId);
   if (error) throw error;
 }
 

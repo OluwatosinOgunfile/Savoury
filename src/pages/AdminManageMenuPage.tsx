@@ -53,7 +53,7 @@ export function AdminManageMenuPage() {
     deleteAdminFood(food.id);
     setAdminFoods((current) => current.filter((item) => item.id !== food.id));
     setDeleteTarget(null);
-    setFeedback(`${food.name} deleted from the foods table.`);
+    setFeedback(`${food.name} removed from the live menu.`);
   };
 
   return (
@@ -121,7 +121,7 @@ export function AdminManageMenuPage() {
           <Card className="w-full max-w-md">
             <CardContent>
               <h2 className="text-xl font-black">Delete {deleteTarget.name}?</h2>
-              <p className="mt-2 text-sm font-semibold text-zinc-500">This removes the item from the foods table.</p>
+              <p className="mt-2 text-sm font-semibold text-zinc-500">This hides the item from the live menu while keeping old order records intact.</p>
               <div className="mt-5 flex gap-2">
                 <Button onClick={() => removeFood(deleteTarget)}>Confirm Delete</Button>
                 <Button variant="outline" onClick={() => setDeleteTarget(null)}>Cancel</Button>
