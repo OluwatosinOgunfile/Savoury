@@ -5,6 +5,7 @@ import { AccountPage } from "@/pages/AccountPage";
 import { AdminDashboard } from "@/pages/AdminDashboard";
 import { AdminFoodFormPage } from "@/pages/AdminFoodFormPage";
 import { AdminManageMenuPage } from "@/pages/AdminManageMenuPage";
+import { AdminOrderDetailsPage } from "@/pages/AdminOrderDetailsPage";
 import { AuthCallbackPage } from "@/pages/AuthCallbackPage";
 import { CartPage } from "@/pages/CartPage";
 import { RequireAdmin } from "@/components/RequireAdmin";
@@ -41,6 +42,7 @@ export function App() {
         <Route path="login" element={<LoginPage />} />
         <Route path="signup" element={<SignupPage />} />
         <Route path="admin" element={<RequireAdmin><AdminDashboard /></RequireAdmin>} />
+        <Route path="admin/orders/:orderId" element={<RequireAdmin><AdminOrderDetailsPage /></RequireAdmin>} />
         <Route path="admin/menu" element={<RequireAdmin><AdminManageMenuPage /></RequireAdmin>} />
         <Route path="admin/foods/new" element={<RequireAdmin><AdminFoodFormPage /></RequireAdmin>} />
         <Route path="admin/foods/:foodId/edit" element={<RequireAdmin><AdminFoodFormPage /></RequireAdmin>} />
