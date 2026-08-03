@@ -35,7 +35,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
       mounted = false;
     };
   }, []);
-
   const availableStock = (food: Food) => food.stockQuantity ?? Number.MAX_SAFE_INTEGER;
 
   const addItem = (food: Food, quantity = 1) => {

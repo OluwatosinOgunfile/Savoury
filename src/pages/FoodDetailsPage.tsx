@@ -33,7 +33,6 @@ export function FoodDetailsPage() {
   useEffect(() => {
     setImageSrc(food.image || "/images/savoury-hero.png");
   }, [food.image]);
-
   useEffect(() => {
     setQuantity((current) => Math.max(1, Math.min(stock || 1, current)));
   }, [stock]);
