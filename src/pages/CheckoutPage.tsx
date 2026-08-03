@@ -17,34 +17,50 @@ import { paymentProviders } from "@/services/payment";
 import type { DeliveryMode, PaymentMethod } from "@/types";
 
 const checkoutSchema = z.object({
-  name: z.string().min(2),
-  phone: z.string().min(7),
-  address: z.string().min(5),
+  name: z.string().trim().min(2, "Enter your name."),
+  phone: z.string().trim().min(7, "Enter a reachable phone number."),
+  address: z.string().trim(),
 });
 
 export function CheckoutPage() {
   const cart = useCart();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { data: savedAddresses = addresses } = useQuery({ queryKey: accountKeys.addresses(user?.id), queryFn: () => fetchUserAddresses(user?.id) });
   const [deliveryMode, setDeliveryMode] = useState<DeliveryMode>("delivery");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("card");
-  const [form, setForm] = useState({ name: "Guest Customer", phone: "+234 801 000 0000", address: addresses[0].line1, instructions: "", deliveryTime: "ASAP" });
+  const [form, setForm] = useState({ name: "", phone: "", address: "", instructions: "", deliveryTime: "ASAP" });
   const [error, setError] = useState("");
+  const [placingOrder, setPlacingOrder] = useState(false);
   const hasStockIssue = cart.items.some((item) => (item.food.stockQuantity ?? 50) <= 0 || item.quantity > (item.food.stockQuantity ?? 50));
+  const orderTotal = deliveryMode === "pickup" ? cart.total - cart.deliveryFee : cart.total;
+
+  useEffect(() => {
+    setForm((current) => ({
+      ...current,
+      name: current.name || profile?.fullName || "",
+      phone: current.phone || profile?.phone || "",
+    }));
+  }, [profile]);
 
   useEffect(() => {
     const defaultAddress = savedAddresses.find((address) => address.default) || savedAddresses[0];
-    if (defaultAddress && form.address === addresses[0].line1) {
-      setForm((current) => ({ ...current, address: defaultAddress.line1 }));
-    }
-  }, [form.address, savedAddresses]);
+    if (!defaultAddress) return;
+    setForm((current) => (current.address ? current : { ...current, address: defaultAddress.line1 }));
+  }, [savedAddresses]);
 
   const placeOrder = async () => {
+    if (placingOrder) return;
+    setError("");
+
     const parsed = checkoutSchema.safeParse(form);
     if (!parsed.success || cart.items.length === 0) {
-      setError("Please complete customer information and add at least one meal.");
+      setError(parsed.success ? "Add at least one meal before placing an order." : parsed.error.issues[0]?.message || "Please complete your customer information.");
+      return;
+    }
+    if (deliveryMode === "delivery" && form.address.trim().length < 5) {
+      setError("Enter a delivery address or switch to pickup.");
       return;
     }
     if (isSupabaseConfigured && !user) {
@@ -55,22 +71,24 @@ export function CheckoutPage() {
       setError("One or more items in your cart is out of stock or above available stock.");
       return;
     }
-    const total = deliveryMode === "pickup" ? cart.total - cart.deliveryFee : cart.total;
-    await paymentProviders[paymentMethod === "card" ? "paystack" : paymentMethod].initialize({
-      amount: total,
-      email: "customer@savoury.local",
-      reference: `SV-${Date.now()}`,
-      method: paymentMethod,
-    });
+
+    setPlacingOrder(true);
     try {
+      await paymentProviders[paymentMethod === "card" ? "paystack" : paymentMethod].initialize({
+        amount: orderTotal,
+        email: profile?.email || user?.email || "customer@savoury.local",
+        reference: `SV-${Date.now()}`,
+        method: paymentMethod,
+      });
+
       const order = await saveSubmittedOrder({
         customerName: form.name,
         phone: form.phone,
-        address: form.address,
+        address: deliveryMode === "pickup" ? "Pickup at Savoury Restaurant" : form.address,
         items: cart.items,
         paymentMethod,
         deliveryMode,
-        total,
+        total: orderTotal,
         subtotal: cart.subtotal,
         deliveryFee: deliveryMode === "pickup" ? 0 : cart.deliveryFee,
         tax: cart.tax,
@@ -82,11 +100,13 @@ export function CheckoutPage() {
       navigate(`/track/${order.id}`);
     } catch (orderError) {
       setError(orderError instanceof Error ? orderError.message : "Unable to place order because stock is no longer available.");
+    } finally {
+      setPlacingOrder(false);
     }
   };
 
   return (
-    <main className="app-container grid gap-6 py-8 text-white lg:grid-cols-[1fr_420px]">
+    <main className="app-container grid gap-6 py-8 lg:grid-cols-[1fr_420px]">
       <section className="space-y-5">
         <div>
           <h1 className="section-title">Checkout</h1>
@@ -96,10 +116,16 @@ export function CheckoutPage() {
           <CardContent className="grid gap-4 sm:grid-cols-2">
             <Input placeholder="Customer name" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} />
             <Input placeholder="Phone number" value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} />
-            <Input className="sm:col-span-2" placeholder="Delivery address" value={form.address} onChange={(event) => setForm({ ...form, address: event.target.value })} />
-            <select className="h-12 rounded-xl border border-white/10 bg-[#101010] px-4 text-sm text-white" value={form.address} onChange={(event) => setForm({ ...form, address: event.target.value })}>
-              {savedAddresses.map((address) => <option key={address.id} value={address.line1}>{address.label}: {address.line1}</option>)}
-            </select>
+            {deliveryMode === "delivery" && (
+              <>
+                <Input className="sm:col-span-2" placeholder="Delivery address" value={form.address} onChange={(event) => setForm({ ...form, address: event.target.value })} />
+                {savedAddresses.length > 0 && (
+                  <select className="h-12 rounded-xl border border-white/10 bg-[#101010] px-4 text-sm text-white" value={form.address} onChange={(event) => setForm({ ...form, address: event.target.value })}>
+                    {savedAddresses.map((address) => <option key={address.id} value={address.line1}>{address.label}: {address.line1}</option>)}
+                  </select>
+                )}
+              </>
+            )}
             <select className="h-12 rounded-xl border border-white/10 bg-[#101010] px-4 text-sm text-white" value={form.deliveryTime} onChange={(event) => setForm({ ...form, deliveryTime: event.target.value })}>
               <option>ASAP</option>
               <option>30 minutes</option>
@@ -131,21 +157,39 @@ export function CheckoutPage() {
         <Card className="dark-surface">
           <CardContent className="space-y-4">
             <h2 className="text-xl font-black">Order Summary</h2>
-            {cart.items.map((item) => (
-              <div key={item.food.id} className="flex justify-between gap-3 text-sm">
-                <span>{item.quantity} x {item.food.name}</span>
-                <strong>{formatCurrency(item.food.price * item.quantity)}</strong>
+            {cart.items.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-white/10 p-5 text-center text-sm text-zinc-400">
+                Your cart is empty. Add a meal before checkout.
+                <Button className="mt-4 w-full" variant="outline" onClick={() => navigate("/menu")}>Browse Menu</Button>
               </div>
-            ))}
+            ) : (
+              cart.items.map((item) => {
+                const availableStock = item.food.stockQuantity ?? 50;
+                const exceedsStock = item.quantity > availableStock || availableStock <= 0;
+                return (
+                  <div key={item.food.id} className="flex justify-between gap-3 text-sm">
+                    <span>
+                      {item.quantity} x {item.food.name}
+                      <small className={`mt-1 block font-bold ${exceedsStock ? "text-red-400" : "text-zinc-500"}`}>
+                        {availableStock <= 0 ? "Out of stock" : `${availableStock} in stock`}
+                      </small>
+                    </span>
+                    <strong>{formatCurrency(item.food.price * item.quantity)}</strong>
+                  </div>
+                );
+              })
+            )}
             <div className="space-y-2 border-t border-white/10 pt-4 text-sm">
               <Line label="Subtotal" value={formatCurrency(cart.subtotal)} />
               <Line label="Delivery" value={deliveryMode === "pickup" ? "Free pickup" : formatCurrency(cart.deliveryFee)} />
               <Line label="Tax" value={formatCurrency(cart.tax)} />
               <Line label="Estimated delivery" value={deliveryMode === "pickup" ? "20-30 min" : "30-45 min"} />
-              <Line label="Total" value={formatCurrency(deliveryMode === "pickup" ? cart.total - cart.deliveryFee : cart.total)} strong />
+              <Line label="Total" value={formatCurrency(orderTotal)} strong />
             </div>
             {hasStockIssue && <p className="text-sm font-bold text-red-400">Some cart items exceed available stock.</p>}
-            <Button className="w-full" size="lg" onClick={placeOrder} disabled={hasStockIssue}>Place Order</Button>
+            <Button className="w-full" size="lg" onClick={placeOrder} disabled={cart.items.length === 0 || hasStockIssue || placingOrder}>
+              {placingOrder ? "Placing order..." : "Place Order"}
+            </Button>
           </CardContent>
         </Card>
       </aside>
