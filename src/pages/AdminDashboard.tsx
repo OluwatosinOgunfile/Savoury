@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
-import { Activity, BarChart3, CheckCircle2, Clock, ListChecks, PackagePlus, Star, UserPlus, Users, X, XCircle, type LucideIcon } from "lucide-react";
+import { Activity, BarChart3, CheckCircle2, Clock, CreditCard, ListChecks, PackagePlus, Star, UserPlus, Users, X, XCircle, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
@@ -110,7 +110,7 @@ export function AdminDashboard() {
     await queryClient.invalidateQueries({ queryKey: adminDashboardKeys.staff });
     setFeedback(
       staff.emailSent
-        ? `${input.fullName} has been added and login details were emailed to ${input.email}.`
+        ? `${input.fullName} has been added and login details were emailed to ${input.email}${staff.emailProviderId ? ` (Email ID: ${staff.emailProviderId})` : ""}.`
         : `${input.fullName} has been added. Email sending is not configured yet, so use the Supabase function setup notes.`
     );
     setStaffModalOpen(false);
@@ -134,6 +134,7 @@ export function AdminDashboard() {
         </div>
         <div className="flex flex-wrap gap-2">
           <Button size="lg" variant="outline" className="text-base md:text-lg" onClick={() => setStaffModalOpen(true)}><UserPlus className="h-5 w-5" /> Add Staff</Button>
+          <Button size="lg" variant="outline" className="text-base md:text-lg" onClick={() => navigate("/admin/cashier")}><CreditCard className="h-5 w-5" /> Cashier POS</Button>
           <Button size="lg" className="text-base md:text-lg" onClick={() => navigate("/admin/menu")}><ListChecks className="h-5 w-5" /> Menu Manager</Button>
         </div>
       </div>

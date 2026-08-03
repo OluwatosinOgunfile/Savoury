@@ -50,6 +50,7 @@ export interface StaffMember {
   createdAt: string;
   temporaryPassword?: string;
   emailSent?: boolean;
+  emailProviderId?: string;
 }
 
 export interface StaffInput {
@@ -261,6 +262,7 @@ export async function createStaffMember(input: StaffInput, createdBy?: string): 
       createdAt: functionData.staff.createdAt,
       temporaryPassword: functionData.temporaryPassword,
       emailSent: Boolean(functionData.emailSent),
+      emailProviderId: functionData.emailProviderId,
     };
   }
 

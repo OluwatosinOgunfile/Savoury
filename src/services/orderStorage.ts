@@ -246,6 +246,87 @@ export async function saveSubmittedOrder(payload: {
   return order;
 }
 
+export async function savePointOfSaleOrder(payload: {
+  cashierId?: string;
+  cashierName?: string;
+  customerName: string;
+  phone: string;
+  items: CartItem[];
+  paymentMethod: PaymentMethod;
+  total: number;
+  subtotal: number;
+  tax: number;
+  discount?: number;
+  diningMode: "dining" | "takeaway";
+  notes?: string;
+}) {
+  const order = getLocalOrder({
+    customerName: payload.customerName,
+    phone: payload.phone,
+    address: payload.diningMode === "dining" ? "In-restaurant dining" : "In-restaurant takeaway",
+    items: payload.items,
+    paymentMethod: payload.paymentMethod,
+    deliveryMode: payload.diningMode === "dining" ? "dining" : "pickup",
+    total: payload.total,
+    instructions: [`POS sale`, `Cashier: ${payload.cashierName || "Staff"}`, payload.notes].filter(Boolean).join("\n"),
+  });
+  order.status = "delivered";
+
+  if (isSupabaseConfigured && supabase) {
+    const { error: stockError } = await supabase.rpc("reserve_food_stock", {
+      items: payload.items.map((item) => ({ food_id: item.food.id, quantity: item.quantity })),
+    });
+
+    if (stockError) {
+      throw new Error(stockError.message || "One or more items are out of stock.");
+    }
+
+    const { data: createdOrder, error: orderError } = await supabase
+      .from("orders")
+      .insert({
+        user_id: payload.cashierId || null,
+        status: "delivered",
+        delivery_mode: payload.diningMode === "dining" ? "dining" : "pickup",
+        subtotal: payload.subtotal,
+        delivery_fee: 0,
+        tax: payload.tax,
+        discount: payload.discount || 0,
+        total: payload.total,
+        special_instructions: order.instructions || null,
+        customer_name: payload.customerName,
+        customer_phone: payload.phone,
+        delivery_address: payload.diningMode === "dining" ? "In-restaurant dining" : "In-restaurant takeaway",
+        payment_method: payload.paymentMethod,
+      })
+      .select("id, status, created_at")
+      .single();
+
+    if (orderError) {
+      throw orderError;
+    }
+
+    const orderItems = payload.items.map((item) => ({
+      order_id: createdOrder.id,
+      food_id: item.food.id,
+      quantity: item.quantity,
+      unit_price: item.food.price,
+    }));
+    const { error: itemsError } = await supabase.from("order_items").insert(orderItems);
+    if (itemsError) throw itemsError;
+
+    const storedOrder: StoredOrder = {
+      ...order,
+      id: createdOrder.id,
+      createdAt: createdOrder.created_at,
+    };
+    saveOrders([storedOrder, ...getStoredOrders().filter((item) => item.id !== storedOrder.id)]);
+    return storedOrder;
+  }
+
+  saveOrders([order, ...getStoredOrders()]);
+  return order;
+}
+
 export async function updateStoredOrderStatus(orderId: string, status: AdminOrderStatus, fallbackOrder?: StoredOrder) {
   if (isSupabaseConfigured && supabase && !orderId.startsWith("SV-")) {
     const { error } = await supabase.from("orders").update({ status: toDbStatus(status) }).eq("id", orderId);

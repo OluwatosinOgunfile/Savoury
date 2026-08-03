@@ -67,7 +67,8 @@ async function sendStaffEmail(input: {
     throw new Error(`Staff login email could not be sent: ${text}`);
   }
 
-  return true;
+  const result = await response.json();
+  return result?.id || true;
 }
 
 async function findAuthUserIdByEmail(adminClient: ReturnType<typeof createClient>, email: string) {
@@ -176,7 +177,7 @@ serve(async (req) => {
 
     if (staffError) return json({ error: staffError.message }, 400);
 
-    const emailSent = await sendStaffEmail({ fullName, email, role, temporaryPassword, dashboardUrl });
+    const emailResult = await sendStaffEmail({ fullName, email, role, temporaryPassword, dashboardUrl });
 
     return json({
       staff: {
@@ -189,7 +190,8 @@ serve(async (req) => {
         createdAt: staff.created_at,
       },
       temporaryPassword,
-      emailSent,
+      emailSent: true,
+      emailProviderId: emailResult === true ? undefined : emailResult,
     });
   } catch (error) {
     return json({ error: error instanceof Error ? error.message : "Could not invite staff." }, 500);
