@@ -6,7 +6,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-type StaffRole = "admin" | "manager" | "kitchen" | "delivery" | "staff";
+type StaffRole = "admin" | "manager" | "kitchen" | "delivery" | "staff" | "cashier";
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -106,7 +106,7 @@ serve(async (req) => {
     const phone = String(body.phone || "").trim();
     const role = String(body.role || "staff") as StaffRole;
     const dashboardUrl = String(body.dashboardUrl || "").trim() || `${supabaseUrl}/admin`;
-    const allowedRoles: StaffRole[] = ["admin", "manager", "kitchen", "delivery", "staff"];
+    const allowedRoles: StaffRole[] = ["admin", "manager", "kitchen", "delivery", "staff", "cashier"];
 
     if (!fullName || !email || !allowedRoles.includes(role)) {
       return json({ error: "Provide full name, email, and a valid role." }, 400);

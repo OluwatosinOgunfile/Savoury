@@ -22,14 +22,19 @@ create table if not exists public.activity_events (
 
 create table if not exists public.staff_members (
   id uuid primary key default gen_random_uuid(),
+  auth_user_id uuid references auth.users(id) on delete set null,
   full_name text not null,
   email text unique not null,
   phone text,
-  role text not null default 'staff' check (role in ('admin', 'manager', 'kitchen', 'delivery', 'staff')),
+  role text not null default 'staff' check (role in ('admin', 'manager', 'kitchen', 'delivery', 'staff', 'cashier')),
   status text not null default 'invited' check (status in ('invited', 'active', 'inactive')),
   created_by uuid references public.users(id) on delete set null,
   created_at timestamptz not null default now()
 );
+
+alter table public.staff_members add column if not exists auth_user_id uuid references auth.users(id) on delete set null;
+alter table public.staff_members drop constraint if exists staff_members_role_check;
+alter table public.staff_members add constraint staff_members_role_check check (role in ('admin', 'manager', 'kitchen', 'delivery', 'staff', 'cashier'));
 
 alter table public.user_sessions enable row level security;
 alter table public.activity_events enable row level security;

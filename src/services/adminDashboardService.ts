@@ -45,7 +45,7 @@ export interface StaffMember {
   fullName: string;
   email: string;
   phone?: string;
-  role: "admin" | "manager" | "kitchen" | "delivery" | "staff";
+  role: "admin" | "manager" | "kitchen" | "delivery" | "staff" | "cashier";
   status: "invited" | "active" | "inactive";
   createdAt: string;
   temporaryPassword?: string;
@@ -247,7 +247,7 @@ export async function createStaffMember(input: StaffInput, createdBy?: string): 
     body: {
       ...input,
       createdBy,
-      dashboardUrl: `${window.location.origin}/admin`,
+      dashboardUrl: `${window.location.origin}${input.role === "admin" ? "/admin" : "/restaurant"}`,
     },
   });
 

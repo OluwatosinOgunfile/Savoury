@@ -11,6 +11,8 @@ export interface AuthCredentials {
 const authRedirectUrl = appEnv.authRedirectUrl;
 const DEMO_ADMIN_EMAIL = "admin@savoury.local";
 const DEMO_ADMIN_PASSWORD = "admin123";
+const DEMO_RESTAURANT_EMAIL = "restaurant@savoury.local";
+const DEMO_RESTAURANT_PASSWORD = "restaurant123";
 
 function callbackUrl() {
   const normalizedUrl = authRedirectUrl.replace(/\/$/, "");
@@ -23,6 +25,14 @@ export async function signInWithEmail({ email, password }: AuthCredentials) {
       localStorage.setItem(
         "savoury-demo-user",
         JSON.stringify({ email, fullName: "Savoury Admin", role: "admin" })
+      );
+      return { email };
+    }
+
+    if (email === DEMO_RESTAURANT_EMAIL && password === DEMO_RESTAURANT_PASSWORD) {
+      localStorage.setItem(
+        "savoury-demo-user",
+        JSON.stringify({ email, fullName: "Restaurant Cashier", role: "restaurant_staff", staffRole: "cashier" })
       );
       return { email };
     }

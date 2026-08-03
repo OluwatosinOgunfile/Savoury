@@ -1,10 +1,10 @@
 import { type ReactNode } from "react";
 import { Navigate, useLocation } from "react-router-dom";
-import { ShieldAlert } from "lucide-react";
+import { Store } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/Card";
 import { useAuth } from "@/hooks/useAuth";
 
-export function RequireAdmin({ children }: { children: ReactNode }) {
+export function RequireRestaurantStaff({ children }: { children: ReactNode }) {
   const { loading, isAuthenticated, profile } = useAuth();
   const location = useLocation();
 
@@ -14,7 +14,7 @@ export function RequireAdmin({ children }: { children: ReactNode }) {
         <Card className="max-w-md">
           <CardContent className="text-center">
             <div className="mx-auto h-10 w-10 animate-spin rounded-full border-2 border-savoury-primary border-t-transparent" />
-            <p className="mt-4 font-black">Checking admin access...</p>
+            <p className="mt-4 font-black">Checking restaurant access...</p>
           </CardContent>
         </Card>
       </main>
@@ -22,18 +22,18 @@ export function RequireAdmin({ children }: { children: ReactNode }) {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
+    return <Navigate to="/restaurant/login" state={{ from: location }} replace />;
   }
 
-  if (profile?.role !== "admin" || (profile.staffRole && profile.staffRole !== "admin")) {
+  if (profile?.role !== "restaurant_staff" && profile?.role !== "admin") {
     return (
       <main className="app-container grid min-h-[60vh] place-items-center py-10">
         <Card className="max-w-lg">
           <CardContent className="text-center">
-            <ShieldAlert className="mx-auto h-12 w-12 text-savoury-primary" />
-            <h1 className="mt-4 text-2xl font-black">Admin access only</h1>
+            <Store className="mx-auto h-12 w-12 text-savoury-primary" />
+            <h1 className="mt-4 text-2xl font-black">Restaurant staff only</h1>
             <p className="mt-2 text-sm font-semibold text-zinc-500">
-              This dashboard is only visible when you are signed in with an admin account.
+              Sign in with a restaurant staff account to use the sales dashboard.
             </p>
           </CardContent>
         </Card>

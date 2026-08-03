@@ -11,7 +11,12 @@ const items = [
 
 export function BottomNav() {
   const { profile } = useAuth();
-  const visibleItems = profile?.role === "admin" ? [...items, { to: "/admin", label: "Admin", icon: LayoutDashboard }] : items;
+  const isOwnerAdmin = profile?.role === "admin" && (!profile.staffRole || profile.staffRole === "admin");
+  const visibleItems = isOwnerAdmin
+    ? [...items, { to: "/admin", label: "Admin", icon: LayoutDashboard }]
+    : profile?.role === "restaurant_staff"
+      ? [...items, { to: "/restaurant", label: "POS", icon: LayoutDashboard }]
+      : items;
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#151515]/95 backdrop-blur-xl lg:hidden">

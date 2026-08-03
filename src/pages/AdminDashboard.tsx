@@ -134,7 +134,7 @@ export function AdminDashboard() {
         </div>
         <div className="flex flex-wrap gap-2">
           <Button size="lg" variant="outline" className="text-base md:text-lg" onClick={() => setStaffModalOpen(true)}><UserPlus className="h-5 w-5" /> Add Staff</Button>
-          <Button size="lg" variant="outline" className="text-base md:text-lg" onClick={() => navigate("/admin/cashier")}><CreditCard className="h-5 w-5" /> Cashier POS</Button>
+          <Button size="lg" variant="outline" className="text-base md:text-lg" onClick={() => navigate("/restaurant")}><CreditCard className="h-5 w-5" /> Restaurant POS</Button>
           <Button size="lg" className="text-base md:text-lg" onClick={() => navigate("/admin/menu")}><ListChecks className="h-5 w-5" /> Menu Manager</Button>
         </div>
       </div>
@@ -422,6 +422,7 @@ function AddStaffModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (
             >
               <option value="staff">Staff</option>
               <option value="manager">Manager</option>
+              <option value="cashier">Cashier</option>
               <option value="kitchen">Kitchen</option>
               <option value="delivery">Delivery</option>
               <option value="admin">Admin</option>
