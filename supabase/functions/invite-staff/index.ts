@@ -70,6 +70,12 @@ async function sendStaffEmail(input: {
   return true;
 }
 
+async function findAuthUserIdByEmail(adminClient: ReturnType<typeof createClient>, email: string) {
+  const { data, error } = await adminClient.auth.admin.listUsers({ page: 1, perPage: 1000 });
+  if (error) throw error;
+  return data.users.find((user) => user.email?.toLowerCase() === email.toLowerCase())?.id;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -117,11 +123,33 @@ serve(async (req) => {
       },
     });
 
-    if (authError && !authError.message.toLowerCase().includes("already registered")) {
-      return json({ error: authError.message }, 400);
+    let userId = authUser.user?.id;
+    if (authError) {
+      const duplicateUser = authError.message.toLowerCase().includes("already") && authError.message.toLowerCase().includes("registered");
+      if (!duplicateUser) {
+        return json({ error: authError.message }, 400);
+      }
+
+      userId = await findAuthUserIdByEmail(adminClient, email);
+      if (!userId) {
+        return json({ error: "This email already exists in Supabase Auth, but the user could not be found for staff setup." }, 400);
+      }
+
+      const { error: updateAuthError } = await adminClient.auth.admin.updateUserById(userId, {
+        password: temporaryPassword,
+        email_confirm: true,
+        user_metadata: {
+          full_name: fullName,
+          phone,
+          staff_role: role,
+        },
+      });
+
+      if (updateAuthError) {
+        return json({ error: updateAuthError.message }, 400);
+      }
     }
 
-    const userId = authUser.user?.id;
     if (userId) {
       await adminClient.from("users").upsert({ id: userId, email, role: "admin" }, { onConflict: "id" });
       await adminClient.from("profiles").upsert(
