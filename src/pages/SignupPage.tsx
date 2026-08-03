@@ -96,7 +96,7 @@ export function SignupPage() {
           <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent" />
           <div className="absolute bottom-8 left-8 right-8 text-white">
             <p className="font-black uppercase text-savoury-secondary">Fast ordering</p>
-            <h2 className="mt-2 text-4xl font-black">Your favorite meals, rewards, and saved addresses in one place.</h2>
+            <h2 className="mt-2 text-3xl font-black md:text-4xl">Your favorite meals, rewards, and saved addresses in one place.</h2>
           </div>
         </section>
       </div>

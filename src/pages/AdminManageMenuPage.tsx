@@ -61,7 +61,7 @@ export function AdminManageMenuPage() {
       <div className="mb-6 flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
         <div>
           <p className="font-black uppercase text-savoury-primary">Admin menu</p>
-          <h1 className="section-title text-4xl md:text-5xl">Manage Menu</h1>
+          <h1 className="section-title text-3xl md:text-4xl">Manage Menu</h1>
           <p className="mt-2 text-zinc-500">{feedback}</p>
         </div>
         <div className="flex flex-wrap gap-2">

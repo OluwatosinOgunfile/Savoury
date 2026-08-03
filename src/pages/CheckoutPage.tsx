@@ -118,11 +118,11 @@ export function CheckoutPage() {
   return (
     <main className="app-container grid gap-6 py-8 lg:grid-cols-[1fr_420px]">
       <section className="space-y-5">
-        <div className="overflow-hidden rounded-[2rem] border border-white/10 bg-gradient-to-br from-[#151912] via-[#20241b] to-[#556b2f] p-6 text-white shadow-soft md:p-8">
+        <div className="overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-[#151912] via-[#20241b] to-[#556b2f] p-5 text-white shadow-soft md:p-6">
           <p className="text-xs font-black uppercase tracking-[0.24em] text-savoury-secondary">Secure checkout</p>
           <div className="mt-3 flex flex-col justify-between gap-5 md:flex-row md:items-end">
             <div>
-              <h1 className="font-display text-4xl font-black md:text-5xl">Complete your order</h1>
+              <h1 className="font-display text-3xl font-black md:text-4xl">Complete your order</h1>
               <p className="mt-3 max-w-2xl text-sm font-semibold text-white/70 md:text-base">
                 Confirm your contact details, choose how you want your meal, and send the order straight to the kitchen.
               </p>

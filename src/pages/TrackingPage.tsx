@@ -47,12 +47,12 @@ export function TrackingPage() {
   return (
     <main className="bg-savoury-background py-8 text-zinc-950 dark:bg-[#101010] dark:text-white">
       <div className="app-container">
-        <section className="relative overflow-hidden rounded-2xl bg-savoury-primary p-6 text-white shadow-premium md:p-8">
+        <section className="relative overflow-hidden rounded-2xl bg-savoury-primary p-5 text-white shadow-premium md:p-6">
           <img src="/images/savoury-reference-hero.jpg" alt="" className="absolute inset-0 h-full w-full object-cover opacity-20" />
           <div className="relative flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
             <div>
               <p className="font-black uppercase text-savoury-secondary">Live order tracking</p>
-              <h1 className="mt-2 font-display text-4xl font-black md:text-5xl">Order {order.id}</h1>
+              <h1 className="mt-2 font-display text-3xl font-black md:text-4xl">Order {order.id}</h1>
               <p className="mt-3 max-w-2xl text-sm font-semibold text-white/80">
                 Track your order from preparation to delivery using the same status flow managed by the restaurant team.
               </p>

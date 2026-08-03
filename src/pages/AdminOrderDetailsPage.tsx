@@ -72,7 +72,7 @@ export function AdminOrderDetailsPage() {
             Back to Dashboard
           </Link>
           <p className="mt-5 font-black uppercase text-savoury-primary">Order details</p>
-          <h1 className="section-title text-4xl md:text-5xl">Order {order.id}</h1>
+          <h1 className="section-title text-3xl md:text-4xl">Order {order.id}</h1>
           <p className="mt-2 text-zinc-500">Review the customer information and every meal submitted in this order.</p>
         </div>
         <StatusPill status={order.status} />

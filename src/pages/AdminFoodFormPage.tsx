@@ -120,7 +120,7 @@ export function AdminFoodFormPage() {
       <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
           <p className="font-black uppercase text-savoury-primary">Menu management</p>
-          <h1 className="section-title text-4xl md:text-5xl">{existingFood ? "Edit Food" : "Add Food"}</h1>
+          <h1 className="section-title text-3xl md:text-4xl">{existingFood ? "Edit Food" : "Add Food"}</h1>
           <p className="mt-2 text-zinc-500">{message}</p>
         </div>
         <Link to="/admin"><Button variant="outline"><ArrowLeft className="h-4 w-4" /> Back to Dashboard</Button></Link>

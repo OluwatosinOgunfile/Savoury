@@ -48,14 +48,14 @@ export function FoodDetailsPage() {
 
   return (
     <main className="app-container py-8 text-white">
-      <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
+      <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
         <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="overflow-hidden rounded-2xl border border-white/10 bg-[#202020] shadow-premium">
           <img src={imageSrc} alt={food.name} onError={() => setImageSrc("/images/savoury-hero.png")} className="h-[360px] w-full object-cover lg:h-[560px]" />
         </motion.div>
         <div className="space-y-5">
           <div>
             <Badge>{food.category}</Badge>
-            <h1 className="mt-4 text-4xl font-black tracking-tight text-white">{food.name}</h1>
+            <h1 className="mt-4 text-3xl font-black tracking-tight text-white md:text-4xl">{food.name}</h1>
             <p className="mt-3 text-zinc-400">{food.description}</p>
             <p className={`mt-3 text-sm font-black ${outOfStock ? "text-red-400" : "text-emerald-400"}`}>
               {outOfStock ? "Out of stock" : `${stock} in stock`}

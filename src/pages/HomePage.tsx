@@ -113,7 +113,7 @@ export function HomePage() {
               <span className="h-2 w-2 rounded-full bg-emerald-400" />
               Open Now - {settings.deliveryMin}-{settings.deliveryMax} min delivery
             </motion.span>
-            <motion.h1 initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, duration: 0.35 }} className="mt-5 font-display text-5xl font-extrabold leading-tight tracking-tight text-white sm:text-6xl lg:text-[64px]">
+            <motion.h1 initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, duration: 0.35 }} className="mt-5 font-display text-4xl font-extrabold leading-tight tracking-tight text-white sm:text-5xl lg:text-[56px]">
               {settings.name}
               <span className="block text-savoury-secondary">Fresh Meals</span>
               <span className="block">Delivered Fast.</span>
@@ -163,7 +163,7 @@ export function HomePage() {
         {loadingFoods ? <SkeletonGrid /> : <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">{popular.map((food, index) => <DarkFoodCard key={food.id} food={food} badge="Popular" index={index} />)}</div>}
       </section>
 
-      <section className="app-container py-14 text-center">
+      <section className="app-container py-10 text-center">
         <h2 className="text-3xl font-black">Why Choose Savoury?</h2>
         <p className="mt-2 text-sm font-semibold text-zinc-500 dark:text-zinc-500">We go above and beyond to serve you the best</p>
         <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
@@ -171,7 +171,7 @@ export function HomePage() {
         </div>
       </section>
 
-      <section className="bg-white py-14 dark:bg-[#171717]">
+      <section className="bg-white py-10 dark:bg-[#171717]">
         <div className="app-container text-center">
           <h2 className="text-3xl font-black">What Customers Say</h2>
           <p className="mt-2 text-sm font-semibold text-zinc-500 dark:text-zinc-500">Over 2,000 five-star reviews and counting</p>
@@ -181,11 +181,11 @@ export function HomePage() {
         </div>
       </section>
 
-      <section className="app-container py-14">
-        <div className="relative overflow-hidden rounded-2xl bg-savoury-primary p-8 shadow-premium sm:p-10">
+      <section className="app-container py-10">
+        <div className="relative overflow-hidden rounded-2xl bg-savoury-primary p-6 shadow-premium sm:p-8">
           <img src="/images/savoury-hero.png" alt="" className="absolute inset-y-0 right-0 hidden h-full w-1/2 object-cover opacity-20 md:block" />
           <div className="relative max-w-md">
-            <h2 className="text-4xl font-black">Ready to Order?</h2>
+            <h2 className="text-3xl font-black">Ready to Order?</h2>
             <p className="mt-3 text-sm font-semibold text-white/85">Delivery fee: just {formatCurrency(settings.deliveryFee)}</p>
             <p className="mt-1 text-sm font-bold text-white/75">Min Order: {formatCurrency(1000)}</p>
             <div className="mt-6 flex flex-wrap gap-3">

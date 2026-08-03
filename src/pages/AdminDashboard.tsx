@@ -103,7 +103,7 @@ export function AdminDashboard() {
       <div className="mb-6 flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
         <div>
           <p className="font-black uppercase text-savoury-primary">Admin dashboard</p>
-          <h1 className="section-title text-4xl md:text-5xl">Restaurant operations center</h1>
+          <h1 className="section-title text-3xl md:text-4xl">Restaurant operations center</h1>
           <p className="mt-2 text-zinc-500">Manage orders, menu, categories, coupons, customers, reviews, images, and analytics.</p>
         </div>
         <Button size="lg" className="text-base md:text-lg" onClick={() => navigate("/admin/menu")}><ListChecks className="h-5 w-5" /> Menu Manager</Button>

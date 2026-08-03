@@ -70,7 +70,7 @@ export function LoginPage() {
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
           <div className="absolute bottom-8 left-8 right-8 text-white">
             <p className="font-black uppercase text-savoury-secondary">Welcome back</p>
-            <h1 className="mt-2 text-4xl font-black">Fresh meals are one sign-in away.</h1>
+            <h1 className="mt-2 text-3xl font-black md:text-4xl">Fresh meals are one sign-in away.</h1>
           </div>
         </section>
         <section className="p-6 sm:p-10">
