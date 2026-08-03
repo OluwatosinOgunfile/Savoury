@@ -38,11 +38,7 @@ export function LoginPage() {
       navigate(nextPath, { replace: true });
     } catch (authError) {
       const authMessage = authError instanceof Error ? authError.message : "Login failed. Please try again.";
-      setError(
-        form.email.trim().toLowerCase().startsWith("restaurant@") && authMessage.toLowerCase().includes("invalid")
-          ? "This restaurant staff login has not been created in Supabase Auth yet. Create it from the main admin Add Staff button or run npm.cmd run restaurant:create."
-          : authMessage
-      );
+      setError(authMessage);
     } finally {
       setLoading(false);
     }

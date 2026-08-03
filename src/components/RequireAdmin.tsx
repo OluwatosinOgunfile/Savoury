@@ -25,7 +25,7 @@ export function RequireAdmin({ children }: { children: ReactNode }) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (profile?.role !== "admin" || (profile.staffRole && profile.staffRole !== "admin")) {
+  if (profile?.role !== "admin") {
     return (
       <main className="app-container grid min-h-[60vh] place-items-center py-10">
         <Card className="max-w-lg">

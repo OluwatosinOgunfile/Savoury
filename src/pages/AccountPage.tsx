@@ -89,8 +89,7 @@ export function AccountPage() {
   const { data: favoriteFoods = [] } = useQuery({ queryKey: accountKeys.favorites(userId), queryFn: () => fetchUserFavorites(userId) });
   const { data: userOrders = [] } = useQuery({ queryKey: accountKeys.orders(userId), queryFn: () => fetchUserOrders(userId) });
   const { data: userNotifications = [] } = useQuery({ queryKey: accountKeys.notifications(userId), queryFn: () => fetchUserNotifications(userId) });
-  const isOwnerAdmin = profile?.role === "admin" && (!profile.staffRole || profile.staffRole === "admin");
-  const isRestaurantStaff = profile?.role === "restaurant_staff";
+  const isOwnerAdmin = profile?.role === "admin";
 
   const announce = (text: string) => {
     setMessage(text);
@@ -134,7 +133,6 @@ export function AccountPage() {
               {isAuthenticated ? (
                 <div className="flex flex-wrap gap-2">
                   {isOwnerAdmin && <Link to="/admin"><Button size="sm"><LayoutDashboard className="h-4 w-4" /> Admin</Button></Link>}
-                  {isRestaurantStaff && <Link to="/restaurant"><Button size="sm"><LayoutDashboard className="h-4 w-4" /> Restaurant</Button></Link>}
                   <Button size="sm" variant="outline" onClick={signOut}><LogOut className="h-4 w-4" /> Sign out</Button>
                 </div>
               ) : (

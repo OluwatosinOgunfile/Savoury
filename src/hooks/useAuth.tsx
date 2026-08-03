@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
-import type { StaffRole, UserRole } from "@/types";
+import type { UserRole } from "@/types";
 
 export interface AuthProfile {
   id: string;
@@ -10,7 +10,6 @@ export interface AuthProfile {
   phone?: string;
   avatarUrl?: string;
   role: UserRole;
-  staffRole?: StaffRole;
   loyaltyPoints: number;
 }
 
@@ -29,14 +28,13 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 function demoProfile(): AuthProfile | null {
   const stored = localStorage.getItem("savoury-demo-user");
   if (!stored) return null;
-  const user = JSON.parse(stored) as { email: string; fullName?: string; phone?: string; role?: UserRole; staffRole?: StaffRole };
+  const user = JSON.parse(stored) as { email: string; fullName?: string; phone?: string; role?: UserRole };
   return {
     id: "demo-user",
     email: user.email,
     fullName: user.fullName || "Demo Customer",
     phone: user.phone,
-    role: user.role === "admin" || user.role === "restaurant_staff" ? user.role : "customer",
-    staffRole: user.staffRole,
+    role: user.role === "admin" ? "admin" : "customer",
     loyaltyPoints: 250,
   };
 }
@@ -86,19 +84,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     const appUser = Array.isArray(data.users) ? data.users[0] : data.users;
-    let staffRole: StaffRole | undefined;
-    if (appUser?.email) {
-      const { data: staffMember } = await supabase
-        .from("staff_members")
-        .select("role")
-        .eq("email", appUser.email)
-        .neq("status", "inactive")
-        .maybeSingle();
-      staffRole = staffMember?.role as StaffRole | undefined;
-    }
-
     const baseRole = (appUser?.role || "customer") as UserRole;
-    const visibleRole = baseRole === "admin" && staffRole && staffRole !== "admin" ? "restaurant_staff" : baseRole;
 
     setProfile({
       id: data.id,
@@ -107,8 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       avatarUrl: data.avatar_url || undefined,
       loyaltyPoints: data.loyalty_points || 0,
       email: appUser?.email || activeUser.email || "",
-      role: visibleRole,
-      staffRole,
+      role: baseRole,
     });
   };
 
@@ -159,17 +144,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loadProfile(nextSession?.user || null);
     });
 
-    const handleDemoAuth = () => {
-      setSession(null);
-      setUser(null);
-      setProfile(demoProfile());
-    };
-    window.addEventListener("savoury-demo-auth-updated", handleDemoAuth);
-
     return () => {
       mounted = false;
       listener.subscription.unsubscribe();
-      window.removeEventListener("savoury-demo-auth-updated", handleDemoAuth);
     };
   }, []);
 

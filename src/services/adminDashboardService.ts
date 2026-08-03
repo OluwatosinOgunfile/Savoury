@@ -40,49 +40,13 @@ export interface AdminReview {
   createdAt: string;
 }
 
-export interface StaffMember {
-  id: string;
-  fullName: string;
-  email: string;
-  phone?: string;
-  role: "admin" | "manager" | "kitchen" | "delivery" | "staff" | "cashier";
-  status: "invited" | "active" | "inactive";
-  createdAt: string;
-  temporaryPassword?: string;
-  emailSent?: boolean;
-  emailProviderId?: string;
-  emailError?: string;
-}
-
-export interface StaffInput {
-  fullName: string;
-  email: string;
-  phone?: string;
-  role: StaffMember["role"];
-}
-
 export const adminDashboardKeys = {
   customers: ["admin-customers"] as const,
   sessions: ["admin-user-sessions"] as const,
   activity: ["admin-activity-events"] as const,
   reviews: ["admin-reviews"] as const,
   coupons: ["admin-coupons"] as const,
-  staff: ["admin-staff"] as const,
 };
-
-const localStaffKey = "savoury-admin-staff";
-
-function getLocalStaff(): StaffMember[] {
-  try {
-    return JSON.parse(localStorage.getItem(localStaffKey) || "[]") as StaffMember[];
-  } catch {
-    return [];
-  }
-}
-
-function saveLocalStaff(staff: StaffMember[]) {
-  localStorage.setItem(localStaffKey, JSON.stringify(staff));
-}
 
 export async function fetchAdminCustomers(): Promise<AdminCustomer[]> {
   if (!isSupabaseConfigured || !supabase) {
@@ -203,138 +167,4 @@ export async function fetchAdminCoupons(): Promise<Coupon[]> {
   } catch {
     return fallbackCoupons;
   }
-}
-
-export async function fetchStaffMembers(): Promise<StaffMember[]> {
-  if (!isSupabaseConfigured || !supabase) return getLocalStaff();
-
-  const { data, error } = await supabase
-    .from("staff_members")
-    .select("id, full_name, email, phone, role, status, created_at")
-    .order("created_at", { ascending: false });
-
-  if (error) {
-    console.warn("Could not load staff members. Run supabase/admin-dashboard-live-data-patch.sql once.", error);
-    return [];
-  }
-
-  return data.map((staff: any) => ({
-    id: staff.id,
-    fullName: staff.full_name,
-    email: staff.email,
-    phone: staff.phone || undefined,
-    role: staff.role,
-    status: staff.status,
-    createdAt: staff.created_at,
-  }));
-}
-
-export async function createStaffMember(input: StaffInput, createdBy?: string): Promise<StaffMember> {
-  const normalizedRole = input.role === "cashier" ? "staff" : input.role;
-  const normalizedInput = {
-    fullName: input.fullName.trim(),
-    email: input.email.trim().toLowerCase(),
-    phone: input.phone?.trim() || undefined,
-    role: normalizedRole,
-  };
-
-  if (!isSupabaseConfigured || !supabase) {
-    const staff: StaffMember = {
-      id: crypto.randomUUID(),
-      fullName: normalizedInput.fullName,
-      email: normalizedInput.email,
-      phone: normalizedInput.phone,
-      role: normalizedInput.role,
-      status: "active",
-      createdAt: new Date().toISOString(),
-    };
-    saveLocalStaff([staff, ...getLocalStaff().filter((member) => member.email.toLowerCase() !== staff.email.toLowerCase())]);
-    return staff;
-  }
-
-  const { data: functionData, error: functionError } = await supabase.functions.invoke("invite-staff", {
-    body: {
-      ...normalizedInput,
-      full_name: normalizedInput.fullName,
-      name: normalizedInput.fullName,
-      createdBy,
-      dashboardUrl: `${window.location.origin}${normalizedInput.role === "admin" ? "/admin" : "/restaurant"}`,
-    },
-  });
-
-  if (!functionError && functionData?.staff) {
-    return {
-      id: functionData.staff.id,
-      fullName: functionData.staff.fullName,
-      email: functionData.staff.email,
-      phone: functionData.staff.phone || undefined,
-      role: functionData.staff.role === "cashier" ? "staff" : functionData.staff.role,
-      status: functionData.staff.status,
-      createdAt: functionData.staff.createdAt,
-      temporaryPassword: functionData.temporaryPassword,
-      emailSent: Boolean(functionData.emailSent),
-      emailProviderId: functionData.emailProviderId,
-      emailError: functionData.emailError,
-    };
-  }
-
-  if (functionError) {
-    const details = await getFunctionErrorDetails(functionError);
-    throw new Error(details || functionError.message || "Could not create staff login. Deploy the invite-staff Supabase function and configure email sending.");
-  }
-
-  if (functionData?.error) {
-    throw new Error(functionData.error);
-  }
-
-  const { data, error } = await supabase
-    .from("staff_members")
-    .insert({
-      full_name: normalizedInput.fullName,
-      email: normalizedInput.email,
-      phone: normalizedInput.phone || null,
-      role: normalizedInput.role,
-      status: "active",
-      created_by: createdBy || null,
-    })
-    .select("id, full_name, email, phone, role, status, created_at")
-    .single();
-
-  if (error) throw error;
-
-  return {
-    id: data.id,
-    fullName: data.full_name,
-    email: data.email,
-    phone: data.phone || undefined,
-    role: data.role,
-    status: data.status,
-    createdAt: data.created_at,
-  };
-}
-
-export async function deleteStaffMember(staffId: string) {
-  if (!isSupabaseConfigured || !supabase) {
-    saveLocalStaff(getLocalStaff().filter((staff) => staff.id !== staffId));
-    return;
-  }
-
-  const { error } = await supabase.from("staff_members").delete().eq("id", staffId);
-  if (error) throw error;
-}
-
-async function getFunctionErrorDetails(error: any) {
-  try {
-    const context = error?.context;
-    if (context && typeof context.json === "function") {
-      const body = await context.json();
-      return body?.error || body?.message || "";
-    }
-    if (context && typeof context.text === "function") {
-      return await context.text();
-    }
-  } catch {
-    return "";
-  }
-  return "";
 }

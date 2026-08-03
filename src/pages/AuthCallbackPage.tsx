@@ -10,11 +10,7 @@ export function AuthCallbackPage() {
 
   useEffect(() => {
     if (!loading && isAuthenticated) {
-      if (profile?.role === "restaurant_staff") {
-        navigate("/restaurant", { replace: true });
-        return;
-      }
-      if (profile?.role === "admin" && (!profile.staffRole || profile.staffRole === "admin")) {
+      if (profile?.role === "admin") {
         navigate("/admin", { replace: true });
         return;
       }

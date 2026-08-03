@@ -13,8 +13,7 @@ export function Header({ darkMode, setDarkMode }: { darkMode: boolean; setDarkMo
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const isOwnerAdmin = profile?.role === "admin" && (!profile.staffRole || profile.staffRole === "admin");
-  const isRestaurantStaff = profile?.role === "restaurant_staff";
+  const isOwnerAdmin = profile?.role === "admin";
 
   const submitSearch = (event: FormEvent) => {
     event.preventDefault();
@@ -55,11 +54,6 @@ export function Header({ darkMode, setDarkMode }: { darkMode: boolean; setDarkMo
                 Admin
               </NavLink>
             )}
-            {isAuthenticated && isRestaurantStaff && (
-              <NavLink to="/restaurant" className={({ isActive }) => `text-sm font-black transition lg:text-base ${isActive ? "text-zinc-950 dark:text-white" : "text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white"}`}>
-                Restaurant
-              </NavLink>
-            )}
           </nav>
 
           <button className="hidden rounded-full p-1 text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-950 dark:text-zinc-400 dark:hover:bg-white/8 dark:hover:text-white md:inline-flex" aria-label="Toggle theme" onClick={() => setDarkMode(!darkMode)}>
@@ -97,9 +91,6 @@ export function Header({ darkMode, setDarkMode }: { darkMode: boolean; setDarkMo
             <Link to="/menu" onClick={() => setMobileOpen(false)} className="rounded-lg px-3 py-3 text-sm font-black text-zinc-700 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-white/10">Menu</Link>
             {isAuthenticated && isOwnerAdmin && (
               <Link to="/admin" onClick={() => setMobileOpen(false)} className="rounded-lg px-3 py-3 text-sm font-black text-zinc-700 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-white/10">Admin Dashboard</Link>
-            )}
-            {isAuthenticated && isRestaurantStaff && (
-              <Link to="/restaurant" onClick={() => setMobileOpen(false)} className="rounded-lg px-3 py-3 text-sm font-black text-zinc-700 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-white/10">Restaurant Dashboard</Link>
             )}
             <button onClick={() => setDarkMode(!darkMode)} className="flex items-center justify-between rounded-lg px-3 py-3 text-sm font-black text-zinc-700 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-white/10">
               <span>{darkMode ? "Light Mode" : "Dark Mode"}</span>

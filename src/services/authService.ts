@@ -28,8 +28,7 @@ export async function signInWithEmail({ email, password }: AuthCredentials) {
 
 export async function getPostLoginPath(userId: string | undefined, email: string, fallbackPath: string) {
   try {
-    const stored = JSON.parse(localStorage.getItem("savoury-demo-user") || "{}") as { role?: string; staffRole?: string };
-    if (stored.role === "restaurant_staff") return "/restaurant";
+    const stored = JSON.parse(localStorage.getItem("savoury-demo-user") || "{}") as { role?: string };
     if (stored.role === "admin") return "/admin";
   } catch {
     // Continue to Supabase role lookup.
@@ -38,16 +37,6 @@ export async function getPostLoginPath(userId: string | undefined, email: string
   if (!isSupabaseConfigured || !supabase) {
     return fallbackPath;
   }
-
-  const normalizedEmail = email.trim().toLowerCase();
-  const { data: staffMember } = await supabase
-    .from("staff_members")
-    .select("role, status")
-    .eq("email", normalizedEmail)
-    .neq("status", "inactive")
-    .maybeSingle();
-
-  if (staffMember?.role && staffMember.role !== "admin") return "/restaurant";
 
   if (!userId) return fallbackPath;
 
