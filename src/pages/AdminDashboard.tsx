@@ -105,9 +105,13 @@ export function AdminDashboard() {
   };
 
   const addStaff = async (input: StaffInput) => {
-    await createStaffMember(input, user?.id);
+    const staff = await createStaffMember(input, user?.id);
     await queryClient.invalidateQueries({ queryKey: adminDashboardKeys.staff });
-    setFeedback(`${input.fullName} has been added to staff as ${input.role}.`);
+    setFeedback(
+      staff.emailSent
+        ? `${input.fullName} has been added and login details were emailed to ${input.email}.`
+        : `${input.fullName} has been added. Email sending is not configured yet, so use the Supabase function setup notes.`
+    );
     setStaffModalOpen(false);
   };
 
@@ -374,7 +378,7 @@ function AddStaffModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (
     try {
       await onSubmit(form);
     } catch (staffError) {
-      setError(staffError instanceof Error ? staffError.message : "Could not add staff member.");
+      setError(getStaffErrorMessage(staffError));
     } finally {
       setSaving(false);
     }
@@ -418,6 +422,13 @@ function AddStaffModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (
       </Card>
     </div>
   );
+}
+
+function getStaffErrorMessage(error: unknown) {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string") return error;
+  if (error && typeof error === "object" && "message" in error) return String((error as { message?: unknown }).message);
+  return "Could not add staff member. Check that the invite-staff Edge Function is deployed and the staff table SQL has been run.";
 }
 
 function getRevenueForDays(orders: StoredOrder[], days: number) {

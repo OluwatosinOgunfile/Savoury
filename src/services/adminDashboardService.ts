@@ -48,6 +48,8 @@ export interface StaffMember {
   role: "admin" | "manager" | "kitchen" | "delivery" | "staff";
   status: "invited" | "active" | "inactive";
   createdAt: string;
+  temporaryPassword?: string;
+  emailSent?: boolean;
 }
 
 export interface StaffInput {
@@ -240,6 +242,37 @@ export async function createStaffMember(input: StaffInput, createdBy?: string): 
     return staff;
   }
 
+  const { data: functionData, error: functionError } = await supabase.functions.invoke("invite-staff", {
+    body: {
+      ...input,
+      createdBy,
+      dashboardUrl: `${window.location.origin}/admin`,
+    },
+  });
+
+  if (!functionError && functionData?.staff) {
+    return {
+      id: functionData.staff.id,
+      fullName: functionData.staff.fullName,
+      email: functionData.staff.email,
+      phone: functionData.staff.phone || undefined,
+      role: functionData.staff.role,
+      status: functionData.staff.status,
+      createdAt: functionData.staff.createdAt,
+      temporaryPassword: functionData.temporaryPassword,
+      emailSent: Boolean(functionData.emailSent),
+    };
+  }
+
+  if (functionError) {
+    const details = await getFunctionErrorDetails(functionError);
+    throw new Error(details || functionError.message || "Could not create staff login. Deploy the invite-staff Supabase function and configure email sending.");
+  }
+
+  if (functionData?.error) {
+    throw new Error(functionData.error);
+  }
+
   const { data, error } = await supabase
     .from("staff_members")
     .insert({
@@ -264,4 +297,20 @@ export async function createStaffMember(input: StaffInput, createdBy?: string): 
     status: data.status,
     createdAt: data.created_at,
   };
+}
+
+async function getFunctionErrorDetails(error: any) {
+  try {
+    const context = error?.context;
+    if (context && typeof context.json === "function") {
+      const body = await context.json();
+      return body?.error || body?.message || "";
+    }
+    if (context && typeof context.text === "function") {
+      return await context.text();
+    }
+  } catch {
+    return "";
+  }
+  return "";
 }
