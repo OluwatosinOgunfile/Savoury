@@ -6,37 +6,32 @@ import { Activity, BarChart3, CheckCircle2, Clock, ListChecks, PackagePlus, Star
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
-import { categories, foods, reviews } from "@/data/catalog";
+import { categories, foods } from "@/data/catalog";
 import { formatCurrency } from "@/lib/utils";
+import {
+  adminDashboardKeys,
+  fetchAdminActivityEvents,
+  fetchAdminCoupons,
+  fetchAdminCustomers,
+  fetchAdminReviews,
+  fetchAdminUserSessions,
+} from "@/services/adminDashboardService";
 import { mergeAdminFoods } from "@/services/adminMenuStorage";
-import { fetchCategories, fetchFoods, fetchReviews, foodKeys } from "@/services/foodService";
+import { fetchCategories, fetchFoods, foodKeys } from "@/services/foodService";
 import { fetchAdminOrders, getAdminOrders, updateStoredOrderStatus, type AdminOrderStatus, type StoredOrder } from "@/services/orderStorage";
 import type { Food } from "@/types";
 
 const orderStatusOptions: AdminOrderStatus[] = ["preparing", "ready", "out_for_delivery", "delivered"];
 
-const userSessions = [
-  { id: "u1", name: "Adaeze O.", email: "adaeze@example.com", status: "online", lastSeen: "Now", cartItems: 3, currentPage: "Checkout" },
-  { id: "u2", name: "Emeka K.", email: "emeka@example.com", status: "online", lastSeen: "2 min ago", cartItems: 1, currentPage: "Food Details" },
-  { id: "u3", name: "Fatima A.", email: "fatima@example.com", status: "away", lastSeen: "8 min ago", cartItems: 0, currentPage: "Menu" },
-  { id: "u4", name: "Tunde A.", email: "tunde@example.com", status: "offline", lastSeen: "1 hr ago", cartItems: 0, currentPage: "Account" },
-];
-
-const activityFeed = [
-  { id: "a1", user: "Adaeze O.", action: "started checkout", time: "Just now" },
-  { id: "a2", user: "Emeka K.", action: "added Pounded Yam to cart", time: "2 min ago" },
-  { id: "a3", user: "Fatima A.", action: "searched for shawarma", time: "8 min ago" },
-  { id: "a4", user: "Tunde A.", action: "viewed order history", time: "1 hr ago" },
-];
-
 export function AdminDashboard() {
   const navigate = useNavigate();
   const { data: menuFoods = foods } = useQuery({ queryKey: foodKeys.all, queryFn: fetchFoods });
   const { data: menuCategories = categories } = useQuery({ queryKey: foodKeys.categories, queryFn: fetchCategories });
-  const { data: highlightedReviews = reviews } = useQuery({
-    queryKey: foodKeys.reviews(menuFoods[0]?.id || "none"),
-    queryFn: () => (menuFoods[0] ? fetchReviews(menuFoods[0].id) : Promise.resolve(reviews)),
-  });
+  const { data: customers = [] } = useQuery({ queryKey: adminDashboardKeys.customers, queryFn: fetchAdminCustomers });
+  const { data: userSessions = [] } = useQuery({ queryKey: adminDashboardKeys.sessions, queryFn: fetchAdminUserSessions, refetchInterval: 30000 });
+  const { data: activityFeed = [] } = useQuery({ queryKey: adminDashboardKeys.activity, queryFn: fetchAdminActivityEvents, refetchInterval: 30000 });
+  const { data: highlightedReviews = [] } = useQuery({ queryKey: adminDashboardKeys.reviews, queryFn: fetchAdminReviews });
+  const { data: adminCoupons = [] } = useQuery({ queryKey: adminDashboardKeys.coupons, queryFn: fetchAdminCoupons });
 
   const [orders, setOrders] = useState<StoredOrder[]>(() => getAdminOrders());
   const [adminFoods, setAdminFoods] = useState<Food[]>(() => mergeAdminFoods(menuFoods));
@@ -77,12 +72,15 @@ export function AdminDashboard() {
     );
   }, [orders, orderSearch]);
 
+  const fulfilledOrders = orders.filter((order) => order.status !== "rejected");
+  const topFoodCounts = getTopFoodCounts(fulfilledOrders);
+  const popularCategoryCounts = getPopularCategoryCounts(fulfilledOrders);
   const analytics = [
-    { label: "Daily Revenue", value: orders.filter((order) => order.status !== "rejected").reduce((sum, order) => sum + order.total, 0) },
-    { label: "Weekly Revenue", value: 2840000 },
-    { label: "Monthly Revenue", value: 11860000 },
-    { label: "Top Selling Foods", value: adminFoods.filter((food) => food.isTrending).length },
-    { label: "Popular Categories", value: menuCategories.filter((category) => !category.parent).length },
+    { label: "Daily Revenue", value: getRevenueForDays(fulfilledOrders, 1), currency: true },
+    { label: "Weekly Revenue", value: getRevenueForDays(fulfilledOrders, 7), currency: true },
+    { label: "Monthly Revenue", value: getRevenueForDays(fulfilledOrders, 30), currency: true },
+    { label: "Top Selling Foods", value: topFoodCounts.length },
+    { label: "Popular Categories", value: popularCategoryCounts.length || menuCategories.filter((category) => !category.parent).length },
   ];
   const onlineUsers = userSessions.filter((user) => user.status === "online").length;
   const availableUsers = userSessions.filter((user) => user.status !== "offline").length;
@@ -119,7 +117,7 @@ export function AdminDashboard() {
             <CardContent>
               <BarChart3 className="h-6 w-6 text-savoury-primary" />
               <p className="mt-3 text-sm font-bold text-zinc-500">{item.label}</p>
-              <p className="mt-1 text-2xl font-black">{typeof item.value === "number" && item.value > 100000 ? formatCurrency(item.value) : item.value}</p>
+              <p className="mt-1 text-2xl font-black">{item.currency ? formatCurrency(item.value) : item.value}</p>
             </CardContent>
           </Card>
         ))}
@@ -199,23 +197,24 @@ export function AdminDashboard() {
               <Users className="h-8 w-8 text-savoury-primary" />
             </div>
             <div className="mt-5 grid grid-cols-3 gap-3">
-              <Metric label="Total Users" value={userSessions.length} />
+              <Metric label="Total Users" value={customers.length} />
               <Metric label="Available" value={availableUsers} />
               <Metric label="Online Now" value={onlineUsers} />
             </div>
             <div className="mt-5 space-y-3">
-              {userSessions.map((user) => (
+              {userSessions.length > 0 ? userSessions.map((user) => (
                 <div key={user.id} className="flex items-center justify-between gap-3 rounded-xl border border-zinc-100 p-3 dark:border-white/10">
                   <div className="min-w-0">
                     <p className="truncate font-black">{user.name}</p>
                     <p className="truncate text-xs font-semibold text-zinc-500">{user.email}</p>
+                    <p className="truncate text-xs font-semibold text-zinc-500">{user.currentPage} | {user.cartItems} cart item{user.cartItems === 1 ? "" : "s"}</p>
                   </div>
                   <div className="text-right">
                     <StatusDot status={user.status} />
-                    <p className="mt-1 text-xs text-zinc-500">{user.lastSeen}</p>
+                    <p className="mt-1 text-xs text-zinc-500">{formatWaitingTime(user.lastSeenAt, now)} ago</p>
                   </div>
                 </div>
-              ))}
+              )) : <EmptyState text="No live user sessions yet. Run the admin dashboard SQL patch and start recording sessions from the client." />}
             </div>
           </CardContent>
         </Card>
@@ -230,26 +229,50 @@ export function AdminDashboard() {
               <Activity className="h-8 w-8 text-savoury-primary" />
             </div>
             <div className="mt-5 grid gap-3">
-              {activityFeed.map((activity) => (
+              {activityFeed.length > 0 ? activityFeed.map((activity) => (
                 <div key={activity.id} className="rounded-xl bg-zinc-50 p-4 dark:bg-white/10">
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="font-black">{activity.user}</p>
-                      <p className="mt-1 text-sm font-semibold text-zinc-500">{activity.action}</p>
+                      <p className="mt-1 text-sm font-semibold text-zinc-500">{activity.action}{activity.page ? ` on ${activity.page}` : ""}</p>
                     </div>
-                    <span className="flex shrink-0 items-center gap-1 text-xs font-bold text-zinc-500"><Clock className="h-3 w-3" /> {activity.time}</span>
+                    <span className="flex shrink-0 items-center gap-1 text-xs font-bold text-zinc-500"><Clock className="h-3 w-3" /> {formatWaitingTime(activity.createdAt, now)} ago</span>
                   </div>
                 </div>
-              ))}
+              )) : <EmptyState text="No activity events yet. The dashboard will show events as soon as the app records them." />}
             </div>
           </CardContent>
         </Card>
       </section>
 
       <section className="mt-6 grid gap-6 lg:grid-cols-3">
-        <AdminPanel icon={PackagePlus} title="Categories and Coupons" items={[`${menuCategories.length} categories from Supabase`, "SAVOURY15 active", "FAST1000 active", "Referral rewards active"]} />
-        <AdminPanel icon={Users} title="Customers" items={["2,400 customer profiles", "Saved addresses enabled", "Role based access: admin and customer", "Secure Supabase auth ready"]} />
-        <AdminPanel icon={Star} title="Reviews" items={[`${highlightedReviews.length} highlighted reviews from Supabase`, "Food image uploads ready", "Helpful likes enabled", "Moderation workflow ready"]} />
+        <AdminPanel
+          icon={PackagePlus}
+          title="Categories and Coupons"
+          items={[
+            `${menuCategories.length} categories from database`,
+            `${adminCoupons.length} active coupon${adminCoupons.length === 1 ? "" : "s"}`,
+            ...adminCoupons.slice(0, 2).map((coupon) => `${coupon.code}: ${coupon.label}`),
+          ]}
+        />
+        <AdminPanel
+          icon={Users}
+          title="Customers"
+          items={[
+            `${customers.length} customer profile${customers.length === 1 ? "" : "s"} from database`,
+            `${customers.filter((customer) => customer.role === "admin").length} admin account${customers.filter((customer) => customer.role === "admin").length === 1 ? "" : "s"}`,
+            `${customers.reduce((sum, customer) => sum + customer.loyaltyPoints, 0)} total loyalty points`,
+          ]}
+        />
+        <AdminPanel
+          icon={Star}
+          title="Reviews"
+          items={[
+            `${highlightedReviews.length} review${highlightedReviews.length === 1 ? "" : "s"} from database`,
+            highlightedReviews[0] ? `${highlightedReviews[0].rating}/5 for ${highlightedReviews[0].foodName}` : "No customer reviews yet",
+            highlightedReviews[0]?.comment || "Reviews will appear after customers submit ratings",
+          ]}
+        />
       </section>
     </main>
   );
@@ -285,6 +308,33 @@ function formatWaitingTime(createdAt: string, now: number) {
   return `${elapsedDays} day${elapsedDays === 1 ? "" : "s"}`;
 }
 
+function getRevenueForDays(orders: StoredOrder[], days: number) {
+  const since = Date.now() - days * 24 * 60 * 60 * 1000;
+  return orders
+    .filter((order) => new Date(order.createdAt).getTime() >= since)
+    .reduce((sum, order) => sum + order.total, 0);
+}
+
+function getTopFoodCounts(orders: StoredOrder[]) {
+  const counts = new Map<string, number>();
+  orders.forEach((order) => {
+    order.items.forEach((item) => {
+      counts.set(item.food.name, (counts.get(item.food.name) || 0) + item.quantity);
+    });
+  });
+  return Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
+}
+
+function getPopularCategoryCounts(orders: StoredOrder[]) {
+  const counts = new Map<string, number>();
+  orders.forEach((order) => {
+    order.items.forEach((item) => {
+      counts.set(item.food.category, (counts.get(item.food.category) || 0) + item.quantity);
+    });
+  });
+  return Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
+}
+
 function Metric({ label, value }: { label: string; value: number }) {
   return (
     <div className="rounded-xl bg-zinc-50 p-4 text-center dark:bg-white/10">
@@ -315,5 +365,13 @@ function AdminPanel({ icon: Icon, title, items }: { icon: LucideIcon; title: str
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+function EmptyState({ text }: { text: string }) {
+  return (
+    <div className="rounded-xl border border-dashed border-zinc-200 p-4 text-sm font-bold text-zinc-500 dark:border-white/10">
+      {text}
+    </div>
   );
 }
