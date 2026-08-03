@@ -38,7 +38,7 @@ export function CheckoutPage() {
   const timeOptions = useMemo(() => getTimeOptions(deliveryMode), [deliveryMode]);
   const selectedTime = timeOptions.find((option) => option.id === form.fulfillmentTime) || timeOptions[0];
   const orderTotal = deliveryMode === "delivery" ? cart.total : cart.total - cart.deliveryFee;
-  const estimatedTime = selectedTime.label.replace("ASAP ", "");
+  const estimatedTime = deliveryMode === "delivery" ? "30-45 min" : selectedTime.label.replace("ASAP ", "");
 
   useEffect(() => {
     setForm((current) => ({
@@ -57,6 +57,12 @@ export function CheckoutPage() {
   useEffect(() => {
     setForm((current) => ({ ...current, fulfillmentTime: "asap" }));
   }, [deliveryMode]);
+
+  useEffect(() => {
+    if (deliveryMode === "delivery" && paymentMethod === "cash") {
+      setPaymentMethod("card");
+    }
+  }, [deliveryMode, paymentMethod]);
 
   const placeOrder = async () => {
     if (placingOrder) return;
@@ -80,7 +86,7 @@ export function CheckoutPage() {
       return;
     }
 
-    const orderInstructions = [form.instructions.trim(), `Requested time: ${selectedTime.label}`].filter(Boolean).join("\n");
+    const orderInstructions = [form.instructions.trim(), deliveryMode === "delivery" ? "" : `Requested time: ${selectedTime.label}`].filter(Boolean).join("\n");
 
     setPlacingOrder(true);
     try {
@@ -201,29 +207,31 @@ export function CheckoutPage() {
                 )}
               </div>
             )}
-            <div className="rounded-2xl border border-white/10 bg-[#101010] p-4">
-              <label className="mb-3 flex items-center gap-2 text-sm font-black text-zinc-200">
-                <CalendarClock size={18} className="text-savoury-secondary" />
-                Time
-              </label>
-              <div className="grid gap-2 sm:grid-cols-2">
-                {timeOptions.map((option) => (
-                  <button
-                    key={option.id}
-                    type="button"
-                    onClick={() => setForm({ ...form, fulfillmentTime: option.id })}
-                    className={`rounded-xl border px-4 py-3 text-left transition ${
-                      form.fulfillmentTime === option.id
-                        ? "border-savoury-secondary bg-savoury-secondary text-zinc-950"
-                        : "border-white/10 bg-white/5 text-zinc-300 hover:border-savoury-primary hover:text-white"
-                    }`}
-                  >
-                    <span className="block text-sm font-black">{option.label}</span>
-                    <span className={`mt-1 block text-xs ${form.fulfillmentTime === option.id ? "text-zinc-800" : "text-zinc-500"}`}>{option.description}</span>
-                  </button>
-                ))}
+            {deliveryMode !== "delivery" && (
+              <div className="rounded-2xl border border-white/10 bg-[#101010] p-4">
+                <label className="mb-3 flex items-center gap-2 text-sm font-black text-zinc-200">
+                  <CalendarClock size={18} className="text-savoury-secondary" />
+                  Time
+                </label>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {timeOptions.map((option) => (
+                    <button
+                      key={option.id}
+                      type="button"
+                      onClick={() => setForm({ ...form, fulfillmentTime: option.id })}
+                      className={`rounded-xl border px-4 py-3 text-left transition ${
+                        form.fulfillmentTime === option.id
+                          ? "border-savoury-secondary bg-savoury-secondary text-zinc-950"
+                          : "border-white/10 bg-white/5 text-zinc-300 hover:border-savoury-primary hover:text-white"
+                      }`}
+                    >
+                      <span className="block text-sm font-black">{option.label}</span>
+                      <span className={`mt-1 block text-xs ${form.fulfillmentTime === option.id ? "text-zinc-800" : "text-zinc-500"}`}>{option.description}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
             <Textarea rows={4} placeholder="Special instructions, allergies, gate code, or pickup note" value={form.instructions} onChange={(event) => setForm({ ...form, instructions: event.target.value })} />
           </CardContent>
         </Card>
@@ -234,7 +242,7 @@ export function CheckoutPage() {
               <p className="mt-1 text-sm text-zinc-400">Payment modules are ready for live gateway keys when you connect them.</p>
             </div>
             <div className="grid gap-3 sm:grid-cols-3">
-              <PaymentCard active={paymentMethod === "cash"} icon={Banknote} title="Cash" onClick={() => setPaymentMethod("cash")} />
+              {deliveryMode !== "delivery" && <PaymentCard active={paymentMethod === "cash"} icon={Banknote} title="Cash" onClick={() => setPaymentMethod("cash")} />}
               <PaymentCard active={paymentMethod === "card"} icon={CreditCard} title="Card" onClick={() => setPaymentMethod("card")} />
               <PaymentCard active={paymentMethod === "transfer"} icon={Landmark} title="Transfer" onClick={() => setPaymentMethod("transfer")} />
             </div>
@@ -275,7 +283,7 @@ export function CheckoutPage() {
               <Line label="Subtotal" value={formatCurrency(cart.subtotal)} />
               <Line label="Delivery" value={deliveryMode === "delivery" ? formatCurrency(cart.deliveryFee) : "No delivery fee"} />
               <Line label="Tax" value={formatCurrency(cart.tax)} />
-              <Line label={deliveryMode === "delivery" ? "Estimated delivery" : "Ready time"} value={selectedTime.label} />
+              <Line label={deliveryMode === "delivery" ? "Estimated delivery" : "Ready time"} value={deliveryMode === "delivery" ? "30-45 min" : selectedTime.label} />
               <Line label="Total" value={formatCurrency(orderTotal)} strong />
             </div>
             <div className="rounded-2xl border border-savoury-secondary/20 bg-savoury-secondary/10 p-4 text-sm text-zinc-200">
