@@ -21,7 +21,6 @@ import { PrivacyPage } from "@/pages/PrivacyPage";
 import { SignupPage } from "@/pages/SignupPage";
 import { TermsPage } from "@/pages/TermsPage";
 import { TrackingPage } from "@/pages/TrackingPage";
-import { RestaurantLoginPage } from "@/pages/RestaurantLoginPage";
 
 export function App() {
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem("savoury-theme") !== "light");
@@ -45,9 +44,7 @@ export function App() {
         <Route path="login" element={<LoginPage />} />
         <Route path="signup" element={<SignupPage />} />
         <Route path="admin" element={<RequireAdmin><AdminDashboard /></RequireAdmin>} />
-        <Route path="admin/cashier" element={<RequireRestaurantStaff><CashierDashboardPage /></RequireRestaurantStaff>} />
         <Route path="restaurant" element={<RequireRestaurantStaff><CashierDashboardPage /></RequireRestaurantStaff>} />
-        <Route path="restaurant/login" element={<RestaurantLoginPage />} />
         <Route path="admin/orders/:orderId" element={<RequireAdmin><AdminOrderDetailsPage /></RequireAdmin>} />
         <Route path="admin/menu" element={<RequireAdmin><AdminManageMenuPage /></RequireAdmin>} />
         <Route path="admin/foods/new" element={<RequireAdmin><AdminFoodFormPage /></RequireAdmin>} />

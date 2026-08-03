@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
-import { Activity, BarChart3, CheckCircle2, Clock, CreditCard, ListChecks, PackagePlus, Star, UserPlus, Users, X, XCircle, type LucideIcon } from "lucide-react";
+import { Activity, BarChart3, CheckCircle2, Clock, ListChecks, PackagePlus, Star, UserPlus, Users, X, XCircle, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
@@ -111,7 +111,7 @@ export function AdminDashboard() {
     setFeedback(
       staff.emailSent
         ? `${input.fullName} has been added and login details were emailed to ${input.email}${staff.emailProviderId ? ` (Email ID: ${staff.emailProviderId})` : ""}.`
-        : `${input.fullName} has been added. Email sending is not configured yet, so use the Supabase function setup notes.`
+        : `${input.fullName} has been added. Email was not sent${staff.emailError ? `: ${staff.emailError}` : ""}. Temporary password: ${staff.temporaryPassword || "check Supabase Auth user settings"}.`
     );
     setStaffModalOpen(false);
   };
@@ -134,7 +134,6 @@ export function AdminDashboard() {
         </div>
         <div className="flex flex-wrap gap-2">
           <Button size="lg" variant="outline" className="text-base md:text-lg" onClick={() => setStaffModalOpen(true)}><UserPlus className="h-5 w-5" /> Add Staff</Button>
-          <Button size="lg" variant="outline" className="text-base md:text-lg" onClick={() => navigate("/restaurant")}><CreditCard className="h-5 w-5" /> Restaurant POS</Button>
           <Button size="lg" className="text-base md:text-lg" onClick={() => navigate("/admin/menu")}><ListChecks className="h-5 w-5" /> Menu Manager</Button>
         </div>
       </div>
@@ -420,9 +419,8 @@ function AddStaffModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (
               value={form.role}
               onChange={(event) => setForm({ ...form, role: event.target.value as StaffInput["role"] })}
             >
-              <option value="staff">Staff</option>
+              <option value="staff">Cashier / Restaurant POS</option>
               <option value="manager">Manager</option>
-              <option value="cashier">Cashier</option>
               <option value="kitchen">Kitchen</option>
               <option value="delivery">Delivery</option>
               <option value="admin">Admin</option>

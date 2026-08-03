@@ -101,10 +101,11 @@ serve(async (req) => {
     if (callerRow?.role !== "admin") return json({ error: "Only admins can add staff." }, 403);
 
     const body = await req.json();
-    const fullName = String(body.fullName || "").trim();
+    const fullName = String(body.fullName || body.full_name || body.name || "").trim();
     const email = String(body.email || "").trim().toLowerCase();
     const phone = String(body.phone || "").trim();
-    const role = String(body.role || "staff") as StaffRole;
+    const rawRole = String(body.role || "staff").trim().toLowerCase();
+    const role = (rawRole === "cashier" || rawRole === "pos" || rawRole === "sales" ? "staff" : rawRole) as StaffRole;
     const dashboardUrl = String(body.dashboardUrl || "").trim() || `${supabaseUrl}/admin`;
     const allowedRoles: StaffRole[] = ["admin", "manager", "kitchen", "delivery", "staff", "cashier"];
 
@@ -167,7 +168,7 @@ serve(async (req) => {
           email,
           phone: phone || null,
           role,
-          status: "invited",
+          status: "active",
           created_by: caller.user.id,
         },
         { onConflict: "email" },
@@ -177,7 +178,13 @@ serve(async (req) => {
 
     if (staffError) return json({ error: staffError.message }, 400);
 
-    const emailResult = await sendStaffEmail({ fullName, email, role, temporaryPassword, dashboardUrl });
+    let emailResult: string | boolean | undefined;
+    let emailError: string | undefined;
+    try {
+      emailResult = await sendStaffEmail({ fullName, email, role, temporaryPassword, dashboardUrl });
+    } catch (sendError) {
+      emailError = sendError instanceof Error ? sendError.message : "Staff email could not be sent.";
+    }
 
     return json({
       staff: {
@@ -190,8 +197,9 @@ serve(async (req) => {
         createdAt: staff.created_at,
       },
       temporaryPassword,
-      emailSent: true,
+      emailSent: Boolean(emailResult),
       emailProviderId: emailResult === true ? undefined : emailResult,
+      emailError,
     });
   } catch (error) {
     return json({ error: error instanceof Error ? error.message : "Could not invite staff." }, 500);

@@ -22,7 +22,7 @@ export function RequireRestaurantStaff({ children }: { children: ReactNode }) {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/restaurant/login" state={{ from: location }} replace />;
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
   if (profile?.role !== "restaurant_staff" && profile?.role !== "admin") {

@@ -11,8 +11,8 @@ export interface AuthCredentials {
 const authRedirectUrl = appEnv.authRedirectUrl;
 const DEMO_ADMIN_EMAIL = "admin@savoury.local";
 const DEMO_ADMIN_PASSWORD = "admin123";
-const DEMO_RESTAURANT_EMAIL = "restaurant@savoury.local";
-const DEMO_RESTAURANT_PASSWORD = "restaurant123";
+const RESTAURANT_POS_EMAIL = "restaurant@savoury.ng";
+const RESTAURANT_POS_PASSWORD = "Restaurant@2026!";
 
 function callbackUrl() {
   const normalizedUrl = authRedirectUrl.replace(/\/$/, "");
@@ -20,19 +20,21 @@ function callbackUrl() {
 }
 
 export async function signInWithEmail({ email, password }: AuthCredentials) {
+  const normalizedEmail = email.trim().toLowerCase();
+  if (normalizedEmail === RESTAURANT_POS_EMAIL && password === RESTAURANT_POS_PASSWORD) {
+    localStorage.setItem(
+      "savoury-demo-user",
+      JSON.stringify({ email: normalizedEmail, fullName: "Restaurant POS", role: "restaurant_staff", staffRole: "staff" })
+    );
+    window.dispatchEvent(new Event("savoury-demo-auth-updated"));
+    return { email: normalizedEmail };
+  }
+
   if (!isSupabaseConfigured || !supabase) {
     if (email === DEMO_ADMIN_EMAIL && password === DEMO_ADMIN_PASSWORD) {
       localStorage.setItem(
         "savoury-demo-user",
         JSON.stringify({ email, fullName: "Savoury Admin", role: "admin" })
-      );
-      return { email };
-    }
-
-    if (email === DEMO_RESTAURANT_EMAIL && password === DEMO_RESTAURANT_PASSWORD) {
-      localStorage.setItem(
-        "savoury-demo-user",
-        JSON.stringify({ email, fullName: "Restaurant Cashier", role: "restaurant_staff", staffRole: "cashier" })
       );
       return { email };
     }
@@ -47,14 +49,15 @@ export async function signInWithEmail({ email, password }: AuthCredentials) {
 }
 
 export async function getPostLoginPath(userId: string | undefined, email: string, fallbackPath: string) {
+  try {
+    const stored = JSON.parse(localStorage.getItem("savoury-demo-user") || "{}") as { role?: string; staffRole?: string };
+    if (stored.role === "restaurant_staff") return "/restaurant";
+    if (stored.role === "admin") return "/admin";
+  } catch {
+    // Continue to Supabase role lookup.
+  }
+
   if (!isSupabaseConfigured || !supabase) {
-    try {
-      const stored = JSON.parse(localStorage.getItem("savoury-demo-user") || "{}") as { role?: string; staffRole?: string };
-      if (stored.role === "restaurant_staff") return "/restaurant";
-      if (stored.role === "admin") return "/admin";
-    } catch {
-      return fallbackPath;
-    }
     return fallbackPath;
   }
 
@@ -63,7 +66,7 @@ export async function getPostLoginPath(userId: string | undefined, email: string
     .from("staff_members")
     .select("role, status")
     .eq("email", normalizedEmail)
-    .eq("status", "active")
+    .neq("status", "inactive")
     .maybeSingle();
 
   if (staffMember?.role && staffMember.role !== "admin") return "/restaurant";

@@ -51,6 +51,7 @@ export interface StaffMember {
   temporaryPassword?: string;
   emailSent?: boolean;
   emailProviderId?: string;
+  emailError?: string;
 }
 
 export interface StaffInput {
@@ -229,14 +230,22 @@ export async function fetchStaffMembers(): Promise<StaffMember[]> {
 }
 
 export async function createStaffMember(input: StaffInput, createdBy?: string): Promise<StaffMember> {
+  const normalizedRole = input.role === "cashier" ? "staff" : input.role;
+  const normalizedInput = {
+    fullName: input.fullName.trim(),
+    email: input.email.trim().toLowerCase(),
+    phone: input.phone?.trim() || undefined,
+    role: normalizedRole,
+  };
+
   if (!isSupabaseConfigured || !supabase) {
     const staff: StaffMember = {
       id: crypto.randomUUID(),
-      fullName: input.fullName,
-      email: input.email,
-      phone: input.phone,
-      role: input.role,
-      status: "invited",
+      fullName: normalizedInput.fullName,
+      email: normalizedInput.email,
+      phone: normalizedInput.phone,
+      role: normalizedInput.role,
+      status: "active",
       createdAt: new Date().toISOString(),
     };
     saveLocalStaff([staff, ...getLocalStaff().filter((member) => member.email.toLowerCase() !== staff.email.toLowerCase())]);
@@ -245,9 +254,11 @@ export async function createStaffMember(input: StaffInput, createdBy?: string): 
 
   const { data: functionData, error: functionError } = await supabase.functions.invoke("invite-staff", {
     body: {
-      ...input,
+      ...normalizedInput,
+      full_name: normalizedInput.fullName,
+      name: normalizedInput.fullName,
       createdBy,
-      dashboardUrl: `${window.location.origin}${input.role === "admin" ? "/admin" : "/restaurant"}`,
+      dashboardUrl: `${window.location.origin}${normalizedInput.role === "admin" ? "/admin" : "/restaurant"}`,
     },
   });
 
@@ -257,12 +268,13 @@ export async function createStaffMember(input: StaffInput, createdBy?: string): 
       fullName: functionData.staff.fullName,
       email: functionData.staff.email,
       phone: functionData.staff.phone || undefined,
-      role: functionData.staff.role,
+      role: functionData.staff.role === "cashier" ? "staff" : functionData.staff.role,
       status: functionData.staff.status,
       createdAt: functionData.staff.createdAt,
       temporaryPassword: functionData.temporaryPassword,
       emailSent: Boolean(functionData.emailSent),
       emailProviderId: functionData.emailProviderId,
+      emailError: functionData.emailError,
     };
   }
 
@@ -278,11 +290,11 @@ export async function createStaffMember(input: StaffInput, createdBy?: string): 
   const { data, error } = await supabase
     .from("staff_members")
     .insert({
-      full_name: input.fullName,
-      email: input.email,
-      phone: input.phone || null,
-      role: input.role,
-      status: "invited",
+      full_name: normalizedInput.fullName,
+      email: normalizedInput.email,
+      phone: normalizedInput.phone || null,
+      role: normalizedInput.role,
+      status: "active",
       created_by: createdBy || null,
     })
     .select("id, full_name, email, phone, role, status, created_at")

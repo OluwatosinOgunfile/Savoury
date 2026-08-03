@@ -6,12 +6,22 @@ import { useAuth } from "@/hooks/useAuth";
 
 export function AuthCallbackPage() {
   const navigate = useNavigate();
-  const { loading, isAuthenticated } = useAuth();
+  const { loading, isAuthenticated, profile } = useAuth();
 
   useEffect(() => {
-    if (!loading && isAuthenticated) navigate("/account", { replace: true });
+    if (!loading && isAuthenticated) {
+      if (profile?.role === "restaurant_staff") {
+        navigate("/restaurant", { replace: true });
+        return;
+      }
+      if (profile?.role === "admin" && (!profile.staffRole || profile.staffRole === "admin")) {
+        navigate("/admin", { replace: true });
+        return;
+      }
+      navigate("/account", { replace: true });
+    }
     if (!loading && !isAuthenticated) navigate("/login", { replace: true });
-  }, [isAuthenticated, loading, navigate]);
+  }, [isAuthenticated, loading, navigate, profile]);
 
   return (
     <main className="app-container grid min-h-[calc(100vh-5rem)] place-items-center py-10">

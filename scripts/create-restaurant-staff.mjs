@@ -34,7 +34,7 @@ const staffEmail = process.env.SAVOURY_RESTAURANT_EMAIL || "restaurant@savoury.n
 const staffPassword = process.env.SAVOURY_RESTAURANT_PASSWORD || "Restaurant@2026!";
 const staffName = process.env.SAVOURY_RESTAURANT_NAME || "Restaurant Cashier";
 const staffPhone = process.env.SAVOURY_RESTAURANT_PHONE || "";
-const staffRole = process.env.SAVOURY_RESTAURANT_ROLE || "cashier";
+const staffRole = process.env.SAVOURY_RESTAURANT_ROLE || "staff";
 
 if (!supabaseUrl || !serviceKey) {
   console.error("Missing VITE_SUPABASE_URL and a service-role key in .env.local.");

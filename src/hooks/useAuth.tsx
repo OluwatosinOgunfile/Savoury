@@ -70,7 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     if (!activeUser) {
-      setProfile(null);
+      setProfile(demoProfile());
       return;
     }
 
@@ -92,7 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .from("staff_members")
         .select("role")
         .eq("email", appUser.email)
-        .eq("status", "active")
+        .neq("status", "inactive")
         .maybeSingle();
       staffRole = staffMember?.role as StaffRole | undefined;
     }
@@ -159,9 +159,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loadProfile(nextSession?.user || null);
     });
 
+    const handleDemoAuth = () => {
+      setSession(null);
+      setUser(null);
+      setProfile(demoProfile());
+    };
+    window.addEventListener("savoury-demo-auth-updated", handleDemoAuth);
+
     return () => {
       mounted = false;
       listener.subscription.unsubscribe();
+      window.removeEventListener("savoury-demo-auth-updated", handleDemoAuth);
     };
   }, []);
 
