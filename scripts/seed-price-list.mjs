@@ -196,6 +196,7 @@ await must(
       preparation_time: category === "Drinks" || category === "Extras" ? 3 : category === "Breakfast" || category === "Sides" ? 12 : 25,
       rating: 4.8,
       popularity: 200 - index,
+      stock_quantity: 50,
       is_available: true,
       is_special: index < 8,
       is_recommended: index % 3 === 0,

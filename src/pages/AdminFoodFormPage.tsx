@@ -17,6 +17,7 @@ interface FoodForm {
   image: string;
   prepTime: string;
   calories: string;
+  stockQuantity: string;
   description: string;
 }
 
@@ -27,6 +28,7 @@ const emptyForm: FoodForm = {
   image: "/images/savoury-hero.png",
   prepTime: "20",
   calories: "500",
+  stockQuantity: "50",
   description: "",
 };
 
@@ -50,6 +52,7 @@ export function AdminFoodFormPage() {
       image: existingFood.image,
       prepTime: String(existingFood.prepTime),
       calories: String(existingFood.calories),
+      stockQuantity: String(existingFood.stockQuantity ?? 50),
       description: existingFood.description,
     });
   }, [existingFood]);
@@ -75,6 +78,7 @@ export function AdminFoodFormPage() {
     const price = Number(form.price);
     const prepTime = Number(form.prepTime);
     const calories = Number(form.calories);
+    const stockQuantity = Number(form.stockQuantity);
 
     if (!form.name.trim() || !Number.isFinite(price) || price <= 0) {
       setMessage("Enter a food name and a valid price before saving.");
@@ -92,6 +96,7 @@ export function AdminFoodFormPage() {
       ingredients: [form.category, "Savoury seasoning"],
       calories: Number.isFinite(calories) ? calories : 0,
       prepTime: Number.isFinite(prepTime) ? prepTime : 20,
+      stockQuantity: Number.isFinite(stockQuantity) ? Math.max(0, Math.floor(stockQuantity)) : 50,
       rating: existingFood?.rating || 4.8,
       reviews: existingFood?.reviews || 0,
       popularity: existingFood?.popularity || 75,
@@ -147,6 +152,7 @@ export function AdminFoodFormPage() {
               </select>
               <Input placeholder="Preparation time" type="number" min={1} value={form.prepTime} onChange={(event) => setForm({ ...form, prepTime: event.target.value })} />
               <Input placeholder="Calories" type="number" min={0} value={form.calories} onChange={(event) => setForm({ ...form, calories: event.target.value })} />
+              <Input placeholder="Stock quantity" type="number" min={0} value={form.stockQuantity} onChange={(event) => setForm({ ...form, stockQuantity: event.target.value })} />
               <textarea className="min-h-32 rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm font-semibold text-zinc-950 outline-none placeholder:text-zinc-500 dark:border-white/10 dark:bg-zinc-950 dark:text-white md:col-span-2" placeholder="Description" value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} />
               <Button className="md:col-span-2" type="submit" size="lg"><Save className="h-5 w-5" /> {existingFood ? "Update Food" : "Save Food"}</Button>
             </div>

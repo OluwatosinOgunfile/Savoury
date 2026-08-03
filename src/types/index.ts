@@ -81,6 +81,7 @@ export interface Food {
   isRecommended?: boolean;
   isTrending?: boolean;
   isNew?: boolean;
+  stockQuantity?: number;
 }
 
 export interface CartItem {

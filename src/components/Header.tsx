@@ -22,7 +22,7 @@ export function Header({ darkMode, setDarkMode }: { darkMode: boolean; setDarkMo
   };
 
   return (
-    <header className="sticky top-0 z-40 border-b border-zinc-200 bg-white/95 shadow-sm backdrop-blur-xl transition-colors dark:border-white/8 dark:bg-[#141414]/95 dark:shadow-[0_1px_0_rgba(198,40,40,0.18)]">
+    <header className="sticky top-0 z-40 border-b border-zinc-200 bg-white/95 shadow-sm backdrop-blur-xl transition-colors dark:border-white/8 dark:bg-[#141414]/95 dark:shadow-[0_1px_0_rgba(85,107,47,0.22)]">
       <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:gap-6 lg:px-8">
         <Link to="/" aria-label="Savoury home" className="flex shrink-0 items-center gap-3">
           <span className="grid h-12 w-12 place-items-center rounded-full bg-white p-1 shadow-sm ring-1 ring-zinc-200 transition-transform group-hover:scale-105 dark:ring-white/10">
@@ -70,7 +70,7 @@ export function Header({ darkMode, setDarkMode }: { darkMode: boolean; setDarkMo
             <Link to="/login" className="hidden text-sm font-black text-zinc-500 transition hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white md:block lg:text-base">Login</Link>
           )}
 
-          <Link to={isAuthenticated ? "/account" : "/signup"} className="hidden rounded-xl bg-savoury-primary px-5 py-2.5 text-sm font-black text-white shadow-[0_10px_24px_rgba(198,40,40,0.28)] transition hover:-translate-y-0.5 hover:bg-red-700 md:block">
+          <Link to={isAuthenticated ? "/account" : "/signup"} className="hidden rounded-xl bg-savoury-primary px-5 py-2.5 text-sm font-black text-white shadow-[0_10px_24px_rgba(85,107,47,0.3)] transition hover:-translate-y-0.5 hover:bg-[#445626] md:block">
             {isAuthenticated ? (profile?.fullName || "Account").split(" ")[0] : "Sign Up"}
           </Link>
 

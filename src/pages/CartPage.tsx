@@ -11,6 +11,7 @@ export function CartPage() {
   const cart = useCart();
   const [couponCode, setCouponCode] = useState("");
   const [couponMessage, setCouponMessage] = useState("");
+  const hasStockIssue = cart.items.some((item) => (item.food.stockQuantity ?? 50) <= 0 || item.quantity > (item.food.stockQuantity ?? 50));
 
   const submitCoupon = () => {
     const applied = cart.applyCoupon(couponCode);
@@ -25,24 +26,28 @@ export function CartPage() {
           {cart.items.length === 0 ? (
             <Card className="dark-surface"><CardContent className="p-8 text-center text-zinc-400">Your cart is empty. Fresh meals are waiting.</CardContent></Card>
           ) : (
-            cart.items.map(({ food, quantity }) => (
-              <Card key={food.id} className="dark-surface">
-                <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-center">
-                  <img src={food.image} alt={food.name} className="h-28 w-full rounded-xl object-cover sm:w-32" />
-                  <div className="flex-1">
-                    <h2 className="font-black text-white">{food.name}</h2>
-                    <p className="mt-1 text-sm text-zinc-400">{food.category} | {food.prepTime} min</p>
-                    <p className="mt-2 font-black text-savoury-primary">{formatCurrency(food.price)}</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button variant="outline" size="icon" onClick={() => cart.setQuantity(food.id, quantity - 1)}><Minus className="h-4 w-4" /></Button>
-                    <span className="grid h-11 w-12 place-items-center rounded-xl bg-zinc-100 font-black dark:bg-white/10">{quantity}</span>
-                    <Button variant="outline" size="icon" onClick={() => cart.setQuantity(food.id, quantity + 1)}><Plus className="h-4 w-4" /></Button>
-                    <Button variant="ghost" size="icon" onClick={() => cart.removeItem(food.id)} aria-label={`Remove ${food.name}`}><Trash2 className="h-4 w-4" /></Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))
+            cart.items.map(({ food, quantity }) => {
+              const stock = food.stockQuantity ?? 50;
+              return (
+                <Card key={food.id} className="dark-surface">
+                  <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                    <img src={food.image} alt={food.name} className="h-28 w-full rounded-xl object-cover sm:w-32" />
+                    <div className="flex-1">
+                      <h2 className="font-black text-white">{food.name}</h2>
+                      <p className="mt-1 text-sm text-zinc-400">{food.category} | {food.prepTime} min</p>
+                      <p className="mt-2 font-black text-savoury-primary">{formatCurrency(food.price)}</p>
+                      <p className={`mt-1 text-xs font-black ${stock <= 0 ? "text-red-400" : "text-emerald-400"}`}>{stock <= 0 ? "Out of stock" : `${stock} in stock`}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button variant="outline" size="icon" onClick={() => cart.setQuantity(food.id, quantity - 1)}><Minus className="h-4 w-4" /></Button>
+                      <span className="grid h-11 w-12 place-items-center rounded-xl bg-zinc-100 font-black dark:bg-white/10">{quantity}</span>
+                      <Button variant="outline" size="icon" onClick={() => cart.setQuantity(food.id, quantity + 1)} disabled={quantity >= stock}><Plus className="h-4 w-4" /></Button>
+                      <Button variant="ghost" size="icon" onClick={() => cart.removeItem(food.id)} aria-label={`Remove ${food.name}`}><Trash2 className="h-4 w-4" /></Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })
           )}
         </div>
       </section>
@@ -62,7 +67,8 @@ export function CartPage() {
             <div className="border-t border-white/10 pt-4">
               <SummaryLine label="Total" value={formatCurrency(cart.total)} strong />
             </div>
-            <Link to="/checkout"><Button className="w-full" size="lg" disabled={cart.items.length === 0}>Proceed to Checkout</Button></Link>
+            {hasStockIssue && <p className="text-sm font-bold text-red-400">Adjust cart quantities before checkout.</p>}
+            <Link to="/checkout"><Button className="w-full" size="lg" disabled={cart.items.length === 0 || hasStockIssue}>Proceed to Checkout</Button></Link>
           </CardContent>
         </Card>
       </aside>

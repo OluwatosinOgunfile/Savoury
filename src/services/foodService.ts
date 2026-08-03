@@ -30,6 +30,7 @@ function mapFood(food: any): Food {
     isRecommended: food.is_recommended,
     isTrending: food.popularity > 100,
     isNew: food.popularity < 75,
+    stockQuantity: Number(food.stock_quantity ?? 50),
   } as Food;
 }
 
@@ -97,6 +98,7 @@ export async function saveFoodToDatabase(food: Food): Promise<Food> {
     preparation_time: food.prepTime,
     rating: food.rating,
     popularity: food.popularity,
+    stock_quantity: food.stockQuantity ?? 50,
     is_available: true,
     is_special: Boolean(food.isSpecial),
     is_recommended: Boolean(food.isRecommended),

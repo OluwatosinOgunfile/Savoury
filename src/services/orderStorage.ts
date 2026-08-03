@@ -112,6 +112,7 @@ export async function fetchAdminOrders(userId?: string): Promise<StoredOrder[]> 
           preparation_time,
           rating,
           popularity,
+          stock_quantity,
           is_special,
           is_recommended,
           categories (name)
@@ -163,6 +164,7 @@ export async function fetchAdminOrders(userId?: string): Promise<StoredOrder[]> 
           tags: [food?.categories?.name || "Rice"],
           isSpecial: food?.is_special,
           isRecommended: food?.is_recommended,
+          stockQuantity: Number(food?.stock_quantity ?? 0),
         },
       };
     }),
@@ -186,6 +188,14 @@ export async function saveSubmittedOrder(payload: {
   const order = getLocalOrder(payload);
 
   if (isSupabaseConfigured && supabase && payload.userId) {
+    const { error: stockError } = await supabase.rpc("reserve_food_stock", {
+      items: payload.items.map((item) => ({ food_id: item.food.id, quantity: item.quantity })),
+    });
+
+    if (stockError) {
+      throw new Error(stockError.message || "One or more items are out of stock.");
+    }
+
     const { data: createdOrder, error: orderError } = await supabase
       .from("orders")
       .insert({

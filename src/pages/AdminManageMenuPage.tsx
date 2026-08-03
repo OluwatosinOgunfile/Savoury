@@ -95,6 +95,9 @@ export function AdminManageMenuPage() {
                 <div className="min-w-0">
                   <h2 className="truncate text-xl font-black">{food.name}</h2>
                   <p className="mt-1 text-sm font-bold text-zinc-500">{food.category} | {food.prepTime} min | {food.calories} kcal</p>
+                  <p className={`mt-1 text-xs font-black ${(food.stockQuantity ?? 50) <= 0 ? "text-red-500" : "text-emerald-500"}`}>
+                    {(food.stockQuantity ?? 50) <= 0 ? "Out of stock" : `${food.stockQuantity ?? 50} in stock`}
+                  </p>
                 </div>
                 <p className="shrink-0 font-black text-savoury-primary">{formatCurrency(food.price)}</p>
               </div>

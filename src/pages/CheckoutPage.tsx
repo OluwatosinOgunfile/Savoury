@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
@@ -11,6 +11,7 @@ import { useCart } from "@/hooks/useCart";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { formatCurrency } from "@/lib/utils";
 import { accountKeys, fetchUserAddresses } from "@/services/accountDataService";
+import { foodKeys } from "@/services/foodService";
 import { saveSubmittedOrder } from "@/services/orderStorage";
 import { paymentProviders } from "@/services/payment";
 import type { DeliveryMode, PaymentMethod } from "@/types";
@@ -25,11 +26,13 @@ export function CheckoutPage() {
   const cart = useCart();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { data: savedAddresses = addresses } = useQuery({ queryKey: accountKeys.addresses(user?.id), queryFn: () => fetchUserAddresses(user?.id) });
   const [deliveryMode, setDeliveryMode] = useState<DeliveryMode>("delivery");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("card");
   const [form, setForm] = useState({ name: "Guest Customer", phone: "+234 801 000 0000", address: addresses[0].line1, instructions: "", deliveryTime: "ASAP" });
   const [error, setError] = useState("");
+  const hasStockIssue = cart.items.some((item) => (item.food.stockQuantity ?? 50) <= 0 || item.quantity > (item.food.stockQuantity ?? 50));
 
   useEffect(() => {
     const defaultAddress = savedAddresses.find((address) => address.default) || savedAddresses[0];
@@ -48,6 +51,10 @@ export function CheckoutPage() {
       setError("Please log in before placing an order so the restaurant can receive it.");
       return;
     }
+    if (hasStockIssue) {
+      setError("One or more items in your cart is out of stock or above available stock.");
+      return;
+    }
     const total = deliveryMode === "pickup" ? cart.total - cart.deliveryFee : cart.total;
     await paymentProviders[paymentMethod === "card" ? "paystack" : paymentMethod].initialize({
       amount: total,
@@ -55,22 +62,27 @@ export function CheckoutPage() {
       reference: `SV-${Date.now()}`,
       method: paymentMethod,
     });
-    const order = await saveSubmittedOrder({
-      customerName: form.name,
-      phone: form.phone,
-      address: form.address,
-      items: cart.items,
-      paymentMethod,
-      deliveryMode,
-      total,
-      subtotal: cart.subtotal,
-      deliveryFee: deliveryMode === "pickup" ? 0 : cart.deliveryFee,
-      tax: cart.tax,
-      instructions: form.instructions,
-      userId: user?.id,
-    });
-    cart.clearCart();
-    navigate(`/track/${order.id}`);
+    try {
+      const order = await saveSubmittedOrder({
+        customerName: form.name,
+        phone: form.phone,
+        address: form.address,
+        items: cart.items,
+        paymentMethod,
+        deliveryMode,
+        total,
+        subtotal: cart.subtotal,
+        deliveryFee: deliveryMode === "pickup" ? 0 : cart.deliveryFee,
+        tax: cart.tax,
+        instructions: form.instructions,
+        userId: user?.id,
+      });
+      await queryClient.invalidateQueries({ queryKey: foodKeys.all });
+      cart.clearCart();
+      navigate(`/track/${order.id}`);
+    } catch (orderError) {
+      setError(orderError instanceof Error ? orderError.message : "Unable to place order because stock is no longer available.");
+    }
   };
 
   return (
@@ -132,7 +144,8 @@ export function CheckoutPage() {
               <Line label="Estimated delivery" value={deliveryMode === "pickup" ? "20-30 min" : "30-45 min"} />
               <Line label="Total" value={formatCurrency(deliveryMode === "pickup" ? cart.total - cart.deliveryFee : cart.total)} strong />
             </div>
-            <Button className="w-full" size="lg" onClick={placeOrder}>Place Order</Button>
+            {hasStockIssue && <p className="text-sm font-bold text-red-400">Some cart items exceed available stock.</p>}
+            <Button className="w-full" size="lg" onClick={placeOrder} disabled={hasStockIssue}>Place Order</Button>
           </CardContent>
         </Card>
       </aside>

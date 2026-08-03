@@ -10,9 +10,9 @@ const config: Config = {
       },
       colors: {
         savoury: {
-          primary: "#C62828",
+          primary: "#556B2F",
           secondary: "#FFB300",
-          accent: "#FFF8E1",
+          accent: "#F3F7E8",
           background: "#FAFAFA",
           ink: "#1E1E1E",
         },

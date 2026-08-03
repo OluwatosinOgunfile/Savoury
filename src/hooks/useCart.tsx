@@ -6,9 +6,9 @@ import type { CartItem, Coupon, Food } from "@/types";
 interface CartContextValue {
   items: CartItem[];
   coupon?: Coupon;
-  addItem: (food: Food, quantity?: number) => void;
+  addItem: (food: Food, quantity?: number) => boolean;
   removeItem: (foodId: string) => void;
-  setQuantity: (foodId: string, quantity: number) => void;
+  setQuantity: (foodId: string, quantity: number) => boolean;
   applyCoupon: (code: string) => boolean;
   clearCart: () => void;
   subtotal: number;
@@ -36,20 +36,41 @@ export function CartProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  const availableStock = (food: Food) => food.stockQuantity ?? Number.MAX_SAFE_INTEGER;
+
   const addItem = (food: Food, quantity = 1) => {
+    if (availableStock(food) <= 0) return false;
+    let added = false;
     setItems((current) => {
       const existing = current.find((item) => item.food.id === food.id);
       if (existing) {
-        return current.map((item) => (item.food.id === food.id ? { ...item, quantity: item.quantity + quantity } : item));
+        const nextQuantity = Math.min(availableStock(food), existing.quantity + quantity);
+        added = nextQuantity > existing.quantity;
+        return current.map((item) => (item.food.id === food.id ? { ...item, food, quantity: nextQuantity } : item));
       }
-      return [...current, { food, quantity }];
+      const nextQuantity = Math.min(availableStock(food), quantity);
+      added = nextQuantity > 0;
+      return added ? [...current, { food, quantity: nextQuantity }] : current;
     });
+    return added;
   };
 
   const removeItem = (foodId: string) => setItems((current) => current.filter((item) => item.food.id !== foodId));
   const setQuantity = (foodId: string, quantity: number) => {
-    if (quantity <= 0) return removeItem(foodId);
-    setItems((current) => current.map((item) => (item.food.id === foodId ? { ...item, quantity } : item)));
+    if (quantity <= 0) {
+      removeItem(foodId);
+      return true;
+    }
+    let changed = false;
+    setItems((current) =>
+      current.map((item) => {
+        if (item.food.id !== foodId) return item;
+        const nextQuantity = Math.min(availableStock(item.food), quantity);
+        changed = nextQuantity !== item.quantity;
+        return { ...item, quantity: nextQuantity };
+      })
+    );
+    return changed;
   };
 
   const clearCart = () => {

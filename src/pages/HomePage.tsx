@@ -52,7 +52,7 @@ const categoryIcons: Record<string, LucideIcon> = {
 
 const promos = [
   { title: "Free Delivery", copy: "Use code FREESHIP", code: "FREESHIP", tone: "from-blue-600 to-blue-500", icon: Rocket },
-  { title: "20% Off", copy: "Orders above NGN 5,000", code: "FEAST20", tone: "from-red-700 to-red-500", icon: Sparkles },
+  { title: "20% Off", copy: "Orders above NGN 5,000", code: "FEAST20", tone: "from-[#556B2F] to-[#7A8F45]", icon: Sparkles },
   { title: "Welcome Deal", copy: "10% off first order", code: "WELCOME10", tone: "from-amber-500 to-orange-500", icon: Gift },
 ];
 
@@ -106,7 +106,7 @@ export function HomePage() {
       <section className="relative isolate min-h-[520px] overflow-hidden md:min-h-[580px]">
         <img src={settings.logoUrl} alt="Savoury meals on a restaurant table" className="absolute inset-0 h-full w-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-r from-black via-black/78 to-savoury-primary/35" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(198,40,40,0.34),transparent_34%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(85,107,47,0.38),transparent_34%)]" />
         <div className="app-container relative flex min-h-[520px] items-center pb-28 pt-14 md:min-h-[580px]">
           <div className="max-w-2xl">
             <motion.span initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-2 text-xs font-black text-zinc-100">
@@ -223,7 +223,7 @@ function CategoryTile({ category, index }: { category: Category; index: number }
   const Icon = categoryIcons[category.name] || Utensils;
   const tones = [
     "border-orange-500/25 bg-orange-50 text-orange-600 dark:bg-orange-500/10 dark:text-orange-300",
-    "border-red-500/25 bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-300",
+    "border-[#6b7f39]/25 bg-[#f3f7e8] text-[#556B2F] dark:bg-[#556B2F]/10 dark:text-[#cbd8a5]",
     "border-pink-500/25 bg-pink-50 text-pink-600 dark:bg-pink-500/10 dark:text-pink-300",
     "border-blue-500/25 bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-300",
     "border-emerald-500/25 bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-300",
@@ -258,6 +258,8 @@ function DarkFoodCard({ food, badge, compact = false, index = 0 }: { food: Food;
   const { user } = useAuth();
   const [favorite, setFavorite] = useState(false);
   const [imageSrc, setImageSrc] = useState(food.image || "/images/savoury-hero.png");
+  const stock = food.stockQuantity ?? 50;
+  const outOfStock = stock <= 0;
   const toggleFavorite = async () => {
     const nextFavorite = !favorite;
     setFavorite(nextFavorite);
@@ -274,7 +276,7 @@ function DarkFoodCard({ food, badge, compact = false, index = 0 }: { food: Food;
         <Link to={`/food/${food.slug}`} className="block">
           <img src={imageSrc} alt={food.name} loading="lazy" onError={() => setImageSrc("/images/savoury-hero.png")} className={`${compact ? "h-36" : "h-44"} w-full object-cover transition-transform duration-500 ease-out group-hover:scale-110`} />
         </Link>
-        {(badge || food.isSpecial) && <span className="absolute left-3 top-3 rounded-full bg-savoury-secondary px-2 py-1 text-[10px] font-black text-zinc-950">{badge || "Special"}</span>}
+        {(outOfStock || badge || food.isSpecial) && <span className="absolute left-3 top-3 rounded-full bg-savoury-secondary px-2 py-1 text-[10px] font-black text-zinc-950">{outOfStock ? "Out" : badge || "Special"}</span>}
         <button
           aria-label={`${favorite ? "Remove from" : "Add to"} favorites: ${food.name}`}
           className={`absolute right-3 top-3 grid h-8 w-8 place-items-center rounded-full bg-white/90 transition ${favorite ? "text-savoury-primary" : "text-zinc-600 hover:text-savoury-primary"}`}
@@ -295,11 +297,12 @@ function DarkFoodCard({ food, badge, compact = false, index = 0 }: { food: Food;
         </div>
         <div className="mt-4 flex items-center justify-between">
           <span className="font-black text-savoury-primary">{formatCurrency(food.price)}</span>
-          <Button className="h-8 rounded-lg px-3 text-xs" onClick={() => addItem(food)}>
+          <Button className="h-8 rounded-lg px-3 text-xs" onClick={() => addItem(food)} disabled={outOfStock}>
             <ShoppingCart className="h-3 w-3" />
-            Add
+            {outOfStock ? "Out" : "Add"}
           </Button>
         </div>
+        <p className={`mt-2 text-[11px] font-black ${outOfStock ? "text-red-400" : "text-emerald-500"}`}>{outOfStock ? "Out of stock" : `${stock} in stock`}</p>
       </div>
     </motion.article>
   );

@@ -5,7 +5,7 @@ export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputE
   <input
     ref={ref}
     className={cn(
-      "h-12 w-full rounded-xl border border-white/10 bg-[#101010] px-4 text-sm text-white outline-none transition placeholder:text-zinc-500 focus:border-savoury-primary focus:ring-4 focus:ring-red-950",
+      "h-12 w-full rounded-xl border border-white/10 bg-[#101010] px-4 text-sm text-white outline-none transition placeholder:text-zinc-500 focus:border-savoury-primary focus:ring-4 focus:ring-[#1f2a12]",
       className
     )}
     {...props}
@@ -18,7 +18,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaHTMLAttributes<H
   <textarea
     ref={ref}
     className={cn(
-      "w-full rounded-xl border border-white/10 bg-[#101010] px-4 py-3 text-sm text-white outline-none transition placeholder:text-zinc-500 focus:border-savoury-primary focus:ring-4 focus:ring-red-950",
+      "w-full rounded-xl border border-white/10 bg-[#101010] px-4 py-3 text-sm text-white outline-none transition placeholder:text-zinc-500 focus:border-savoury-primary focus:ring-4 focus:ring-[#1f2a12]",
       className
     )}
     {...props}

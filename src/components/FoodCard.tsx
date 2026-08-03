@@ -16,6 +16,8 @@ export function FoodCard({ food, compact = false }: { food: Food; compact?: bool
   const { user } = useAuth();
   const [favorite, setFavorite] = useState(false);
   const [imageSrc, setImageSrc] = useState(food.image);
+  const stock = food.stockQuantity ?? 50;
+  const outOfStock = stock <= 0;
 
   const toggleFavorite = async () => {
     const nextFavorite = !favorite;
@@ -35,7 +37,7 @@ export function FoodCard({ food, compact = false }: { food: Food; compact?: bool
             <img src={imageSrc} alt={food.name} loading="lazy" onError={() => setImageSrc("/images/savoury-hero.png")} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
           </Link>
           <div className="absolute left-3 top-3 flex gap-2">
-            {food.isSpecial && <Badge>Special</Badge>}
+            {outOfStock ? <Badge className="bg-zinc-950 text-white">Out of stock</Badge> : food.isSpecial && <Badge>Special</Badge>}
             {food.isTrending && <Badge className="bg-white text-zinc-950">Trending</Badge>}
           </div>
           <button
@@ -66,9 +68,12 @@ export function FoodCard({ food, compact = false }: { food: Food; compact?: bool
               {food.prepTime} min
             </span>
           </div>
-          <Button className="w-full" onClick={() => addItem(food)}>
+          <p className={`text-xs font-black ${outOfStock ? "text-red-400" : "text-emerald-400"}`}>
+            {outOfStock ? "Out of stock" : `${stock} in stock`}
+          </p>
+          <Button className="w-full" onClick={() => addItem(food)} disabled={outOfStock}>
             <Plus className="h-4 w-4" />
-            Add to cart
+            {outOfStock ? "Out of stock" : "Add to cart"}
           </Button>
         </div>
       </Card>

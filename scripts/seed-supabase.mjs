@@ -166,6 +166,7 @@ await must(
       preparation_time,
       rating,
       popularity,
+      stock_quantity: 50,
       is_available: true,
       is_special,
       is_recommended,
