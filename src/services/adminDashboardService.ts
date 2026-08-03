@@ -1,6 +1,7 @@
 import { coupons as fallbackCoupons, reviews as fallbackReviews } from "@/data/catalog";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { fetchCoupons } from "@/services/foodService";
+import { fetchSalesRepresentatives, saveSalesRepresentative, type SalesRepresentative } from "@/services/posService";
 import type { Coupon, Review } from "@/types";
 
 export interface AdminCustomer {
@@ -46,6 +47,7 @@ export const adminDashboardKeys = {
   activity: ["admin-activity-events"] as const,
   reviews: ["admin-reviews"] as const,
   coupons: ["admin-coupons"] as const,
+  salesReps: ["admin-sales-representatives"] as const,
 };
 
 export async function fetchAdminCustomers(): Promise<AdminCustomer[]> {
@@ -167,4 +169,20 @@ export async function fetchAdminCoupons(): Promise<Coupon[]> {
   } catch {
     return fallbackCoupons;
   }
+}
+
+export async function fetchAdminSalesRepresentatives() {
+  return fetchSalesRepresentatives();
+}
+
+export async function saveAdminSalesRepresentative(rep: Parameters<typeof saveSalesRepresentative>[0]) {
+  return saveSalesRepresentative(rep);
+}
+
+export async function suspendAdminSalesRepresentative(rep: SalesRepresentative) {
+  return saveSalesRepresentative({ ...rep, status: "suspended" });
+}
+
+export async function activateAdminSalesRepresentative(rep: SalesRepresentative) {
+  return saveSalesRepresentative({ ...rep, status: "active" });
 }

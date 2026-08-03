@@ -94,6 +94,11 @@
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
+
+  .thermal-receipt {
+    width: 80mm;
+    max-width: 100%;
+  }
 }
 
 @keyframes shimmer {
@@ -103,5 +108,29 @@
 
   100% {
     background-position: 200% 0;
+  }
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  .thermal-receipt,
+  .thermal-receipt * {
+    visibility: visible;
+  }
+
+  .thermal-receipt {
+    left: 0;
+    margin: 0;
+    position: absolute;
+    top: 0;
+    width: 80mm;
+  }
+
+  @page {
+    margin: 4mm;
+    size: 80mm auto;
   }
 }

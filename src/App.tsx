@@ -16,6 +16,8 @@ import { LoginPage } from "@/pages/LoginPage";
 import { MenuPage } from "@/pages/MenuPage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
 import { PrivacyPage } from "@/pages/PrivacyPage";
+import { RequireSalesRep } from "@/components/RequireSalesRep";
+import { SalesRepPosPage } from "@/pages/SalesRepPosPage";
 import { SignupPage } from "@/pages/SignupPage";
 import { TermsPage } from "@/pages/TermsPage";
 import { TrackingPage } from "@/pages/TrackingPage";
@@ -41,6 +43,7 @@ export function App() {
         <Route path="auth/callback" element={<AuthCallbackPage />} />
         <Route path="login" element={<LoginPage />} />
         <Route path="signup" element={<SignupPage />} />
+        <Route path="pos" element={<RequireSalesRep><SalesRepPosPage /></RequireSalesRep>} />
         <Route path="admin" element={<RequireAdmin><AdminDashboard /></RequireAdmin>} />
         <Route path="admin/orders/:orderId" element={<RequireAdmin><AdminOrderDetailsPage /></RequireAdmin>} />
         <Route path="admin/menu" element={<RequireAdmin><AdminManageMenuPage /></RequireAdmin>} />

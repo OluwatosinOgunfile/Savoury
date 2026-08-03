@@ -29,6 +29,7 @@ export async function signInWithEmail({ email, password }: AuthCredentials) {
 export async function getPostLoginPath(userId: string | undefined, email: string, fallbackPath: string) {
   try {
     const stored = JSON.parse(localStorage.getItem("savoury-demo-user") || "{}") as { role?: string };
+    if (stored.role === "sales_rep") return "/pos";
     if (stored.role === "admin") return "/admin";
   } catch {
     // Continue to Supabase role lookup.
@@ -47,6 +48,7 @@ export async function getPostLoginPath(userId: string | undefined, email: string
     .maybeSingle();
 
   if (appUser?.role === "admin") return "/admin";
+  if (appUser?.role === "sales_rep") return "/pos";
   return fallbackPath;
 }
 

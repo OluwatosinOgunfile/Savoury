@@ -1,4 +1,4 @@
-export type UserRole = "customer" | "admin";
+export type UserRole = "customer" | "admin" | "sales_rep";
 
 export type FoodCategory =
   | "Rice"

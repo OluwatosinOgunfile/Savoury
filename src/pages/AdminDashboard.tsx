@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 import { Activity, BarChart3, CheckCircle2, Clock, ListChecks, PackagePlus, Star, Users, XCircle, type LucideIcon } from "lucide-react";
@@ -9,31 +9,39 @@ import { Input } from "@/components/ui/Input";
 import { categories } from "@/data/catalog";
 import { formatCurrency } from "@/lib/utils";
 import {
+  activateAdminSalesRepresentative,
   adminDashboardKeys,
   fetchAdminActivityEvents,
   fetchAdminCoupons,
   fetchAdminCustomers,
   fetchAdminReviews,
+  fetchAdminSalesRepresentatives,
   fetchAdminUserSessions,
+  saveAdminSalesRepresentative,
+  suspendAdminSalesRepresentative,
 } from "@/services/adminDashboardService";
 import { fetchCategories, foodKeys } from "@/services/foodService";
 import { fetchAdminOrders, getAdminOrders, updateStoredOrderStatus, type AdminOrderStatus, type StoredOrder } from "@/services/orderStorage";
+import { resetSalesRepresentativePassword, type SalesRepresentative } from "@/services/posService";
 
 const orderStatusOptions: AdminOrderStatus[] = ["preparing", "ready", "out_for_delivery", "delivered"];
 
 export function AdminDashboard() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { data: menuCategories = categories } = useQuery({ queryKey: foodKeys.categories, queryFn: fetchCategories });
   const { data: customers = [] } = useQuery({ queryKey: adminDashboardKeys.customers, queryFn: fetchAdminCustomers });
   const { data: userSessions = [] } = useQuery({ queryKey: adminDashboardKeys.sessions, queryFn: fetchAdminUserSessions, refetchInterval: 30000 });
   const { data: activityFeed = [] } = useQuery({ queryKey: adminDashboardKeys.activity, queryFn: fetchAdminActivityEvents, refetchInterval: 30000 });
   const { data: highlightedReviews = [] } = useQuery({ queryKey: adminDashboardKeys.reviews, queryFn: fetchAdminReviews });
   const { data: adminCoupons = [] } = useQuery({ queryKey: adminDashboardKeys.coupons, queryFn: fetchAdminCoupons });
+  const { data: salesReps = [] } = useQuery({ queryKey: adminDashboardKeys.salesReps, queryFn: fetchAdminSalesRepresentatives });
 
   const [orders, setOrders] = useState<StoredOrder[]>(() => getAdminOrders());
   const [orderSearch, setOrderSearch] = useState("");
   const [feedback, setFeedback] = useState("Ready to manage today's operations.");
   const [now, setNow] = useState(() => Date.now());
+  const [repForm, setRepForm] = useState({ fullName: "", email: "", phone: "", branch: "Ile-Ife Main Branch", shift: "Morning Shift" });
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 30000);
@@ -86,6 +94,46 @@ export function AdminDashboard() {
       return current.map((order) => (order.id === orderId ? { ...order, status } : order));
     });
     setFeedback(`Order ${orderId} moved to ${status.replace(/_/g, " ")}.`);
+  };
+
+  const saveRep = async () => {
+    if (!repForm.fullName.trim() || !repForm.email.trim()) {
+      setFeedback("Provide sales representative name and email.");
+      return;
+    }
+    const saved = await saveAdminSalesRepresentative({
+      fullName: repForm.fullName,
+      email: repForm.email,
+      phone: repForm.phone || undefined,
+      branch: repForm.branch,
+      shift: repForm.shift,
+      status: "active",
+      permissions: ["discounts", "reports"],
+    });
+    await queryClient.invalidateQueries({ queryKey: adminDashboardKeys.salesReps });
+    setRepForm({ fullName: "", email: "", phone: "", branch: "Ile-Ife Main Branch", shift: "Morning Shift" });
+    setFeedback(saved.temporaryPassword ? `Sales representative created. Temporary password for ${saved.email}: ${saved.temporaryPassword}` : "Sales representative profile saved.");
+  };
+
+  const resetRepPassword = async (rep: SalesRepresentative) => {
+    try {
+      const password = await resetSalesRepresentativePassword(rep.email);
+      setFeedback(password ? `Temporary password for ${rep.email}: ${password}` : `Password reset needs the manage-sales-rep function deployed for ${rep.email}.`);
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : "Could not reset sales representative password.");
+    }
+  };
+
+  const toggleRep = async (rep: SalesRepresentative) => {
+    if (rep.status === "active") {
+      await suspendAdminSalesRepresentative(rep);
+      await queryClient.invalidateQueries({ queryKey: adminDashboardKeys.salesReps });
+      setFeedback(`${rep.fullName} has been suspended.`);
+    } else {
+      await activateAdminSalesRepresentative(rep);
+      await queryClient.invalidateQueries({ queryKey: adminDashboardKeys.salesReps });
+      setFeedback(`${rep.fullName} has been reactivated.`);
+    }
   };
 
   return (
@@ -234,6 +282,54 @@ export function AdminDashboard() {
                   </div>
                 </div>
               )) : <EmptyState text="No activity events yet. The dashboard will show events as soon as the app records them." />}
+            </div>
+          </CardContent>
+        </Card>
+      </section>
+
+      <section className="mt-6">
+        <Card>
+          <CardContent>
+            <div className="mb-4 flex flex-col justify-between gap-3 lg:flex-row lg:items-end">
+              <div>
+                <h2 className="text-xl font-black">Sales Representatives</h2>
+                <p className="mt-1 text-sm font-semibold text-zinc-500">Create POS profiles, assign branches, suspend accounts, and review activity summaries.</p>
+              </div>
+              <div className="grid gap-2 md:grid-cols-5">
+                <Input placeholder="Full name" value={repForm.fullName} onChange={(event) => setRepForm({ ...repForm, fullName: event.target.value })} />
+                <Input type="email" placeholder="Email" value={repForm.email} onChange={(event) => setRepForm({ ...repForm, email: event.target.value })} />
+                <Input placeholder="Phone" value={repForm.phone} onChange={(event) => setRepForm({ ...repForm, phone: event.target.value })} />
+                <select className="h-12 rounded-xl border border-white/10 bg-[#101010] px-4 text-sm font-bold text-white outline-none" value={repForm.shift} onChange={(event) => setRepForm({ ...repForm, shift: event.target.value })}>
+                  <option>Morning Shift</option>
+                  <option>Afternoon Shift</option>
+                  <option>Evening Shift</option>
+                </select>
+                <Button onClick={saveRep}>Create POS User</Button>
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[760px] text-left text-sm">
+                <thead className="text-xs uppercase text-zinc-400">
+                  <tr><th className="py-3">Staff</th><th>Email</th><th>Branch</th><th>Shift</th><th>Status</th><th>Permissions</th><th>Actions</th></tr>
+                </thead>
+                <tbody>
+                  {salesReps.map((rep) => (
+                    <tr key={rep.id} className="border-t border-zinc-100 dark:border-white/10">
+                      <td className="py-4 font-black">{rep.fullName}<p className="text-xs text-zinc-500">{rep.staffId}</p></td>
+                      <td>{rep.email}</td>
+                      <td>{rep.branch}</td>
+                      <td>{rep.shift}</td>
+                      <td><span className={`rounded-full px-3 py-1 text-xs font-black capitalize ${rep.status === "active" ? "bg-savoury-accent text-savoury-primary dark:bg-savoury-primary/10" : "bg-red-500/10 text-red-500"}`}>{rep.status}</span></td>
+                      <td className="capitalize">{rep.permissions.join(", ") || "POS only"}</td>
+                      <td className="flex gap-2 py-3">
+                        <Button size="sm" variant="outline" onClick={() => toggleRep(rep)}>{rep.status === "active" ? "Suspend" : "Activate"}</Button>
+                        <Button size="sm" variant="outline" onClick={() => resetRepPassword(rep)}>Reset Password</Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {!salesReps.length && <div className="mt-3"><EmptyState text="No sales representatives yet." /></div>}
             </div>
           </CardContent>
         </Card>

@@ -14,6 +14,10 @@ export function AuthCallbackPage() {
         navigate("/admin", { replace: true });
         return;
       }
+      if (profile?.role === "sales_rep") {
+        navigate("/pos", { replace: true });
+        return;
+      }
       navigate("/account", { replace: true });
     }
     if (!loading && !isAuthenticated) navigate("/login", { replace: true });
