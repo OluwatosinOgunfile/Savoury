@@ -12,6 +12,7 @@ import { formatCurrency } from "@/lib/utils";
 import {
   adminDashboardKeys,
   createStaffMember,
+  deleteStaffMember,
   fetchAdminActivityEvents,
   fetchAdminCoupons,
   fetchAdminCustomers,
@@ -113,6 +114,14 @@ export function AdminDashboard() {
         : `${input.fullName} has been added. Email sending is not configured yet, so use the Supabase function setup notes.`
     );
     setStaffModalOpen(false);
+  };
+
+  const removeStaff = async (staffId: string, name: string) => {
+    const confirmed = window.confirm(`Remove ${name} from staff members?`);
+    if (!confirmed) return;
+    await deleteStaffMember(staffId);
+    await queryClient.invalidateQueries({ queryKey: adminDashboardKeys.staff });
+    setFeedback(`${name} has been removed from staff members.`);
   };
 
   return (
@@ -282,7 +291,7 @@ export function AdminDashboard() {
             <div className="overflow-x-auto">
               <table className="w-full min-w-[680px] text-left text-sm">
                 <thead className="text-xs uppercase text-zinc-400">
-                  <tr><th className="py-3">Name</th><th>Email</th><th>Phone</th><th>Role</th><th>Status</th><th>Added</th></tr>
+                  <tr><th className="py-3">Name</th><th>Email</th><th>Phone</th><th>Role</th><th>Status</th><th>Added</th><th>Action</th></tr>
                 </thead>
                 <tbody>
                   {staffMembers.map((staff) => (
@@ -293,6 +302,9 @@ export function AdminDashboard() {
                       <td className="capitalize">{staff.role}</td>
                       <td><span className="rounded-full bg-savoury-accent px-3 py-1 text-xs font-black capitalize text-savoury-primary dark:bg-savoury-primary/10">{staff.status}</span></td>
                       <td className="text-xs font-bold text-zinc-500">{formatOrderTime(staff.createdAt)}</td>
+                      <td>
+                        <Button size="sm" variant="outline" onClick={() => removeStaff(staff.id, staff.fullName)}>Remove</Button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

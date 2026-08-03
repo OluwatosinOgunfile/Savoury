@@ -299,6 +299,16 @@ export async function createStaffMember(input: StaffInput, createdBy?: string): 
   };
 }
 
+export async function deleteStaffMember(staffId: string) {
+  if (!isSupabaseConfigured || !supabase) {
+    saveLocalStaff(getLocalStaff().filter((staff) => staff.id !== staffId));
+    return;
+  }
+
+  const { error } = await supabase.from("staff_members").delete().eq("id", staffId);
+  if (error) throw error;
+}
+
 async function getFunctionErrorDetails(error: any) {
   try {
     const context = error?.context;
