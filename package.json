@@ -11,6 +11,7 @@
     "seed:price-list": "node scripts/seed-price-list.mjs",
     "images:remote": "node scripts/link-remote-menu-images.mjs",
     "admin:create": "node scripts/create-admin.mjs",
+    "pos:create": "node scripts/create-sales-rep.mjs",
     "preview": "vite preview",
     "lint": "eslint ."
   },
