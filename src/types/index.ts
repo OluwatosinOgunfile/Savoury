@@ -107,7 +107,7 @@ export interface Address {
 }
 
 export type PaymentMethod = "cash" | "card" | "transfer";
-export type DeliveryMode = "delivery" | "pickup";
+export type DeliveryMode = "delivery" | "pickup" | "dining";
 export type OrderStatus = "preparing" | "ready" | "out_for_delivery" | "delivered";
 
 export interface Order {

@@ -65,7 +65,7 @@ create table public.orders (
   user_id uuid references public.users(id) on delete set null,
   address_id uuid references public.addresses(id) on delete set null,
   status public.order_status not null default 'received',
-  delivery_mode text not null check (delivery_mode in ('delivery', 'pickup')),
+  delivery_mode text not null check (delivery_mode in ('delivery', 'pickup', 'dining')),
   subtotal numeric(12,2) not null,
   delivery_fee numeric(12,2) not null default 0,
   tax numeric(12,2) not null default 0,
