@@ -40,13 +40,45 @@ export interface AdminReview {
   createdAt: string;
 }
 
+export interface StaffMember {
+  id: string;
+  fullName: string;
+  email: string;
+  phone?: string;
+  role: "admin" | "manager" | "kitchen" | "delivery" | "staff";
+  status: "invited" | "active" | "inactive";
+  createdAt: string;
+}
+
+export interface StaffInput {
+  fullName: string;
+  email: string;
+  phone?: string;
+  role: StaffMember["role"];
+}
+
 export const adminDashboardKeys = {
   customers: ["admin-customers"] as const,
   sessions: ["admin-user-sessions"] as const,
   activity: ["admin-activity-events"] as const,
   reviews: ["admin-reviews"] as const,
   coupons: ["admin-coupons"] as const,
+  staff: ["admin-staff"] as const,
 };
+
+const localStaffKey = "savoury-admin-staff";
+
+function getLocalStaff(): StaffMember[] {
+  try {
+    return JSON.parse(localStorage.getItem(localStaffKey) || "[]") as StaffMember[];
+  } catch {
+    return [];
+  }
+}
+
+function saveLocalStaff(staff: StaffMember[]) {
+  localStorage.setItem(localStaffKey, JSON.stringify(staff));
+}
 
 export async function fetchAdminCustomers(): Promise<AdminCustomer[]> {
   if (!isSupabaseConfigured || !supabase) {
@@ -167,4 +199,69 @@ export async function fetchAdminCoupons(): Promise<Coupon[]> {
   } catch {
     return fallbackCoupons;
   }
+}
+
+export async function fetchStaffMembers(): Promise<StaffMember[]> {
+  if (!isSupabaseConfigured || !supabase) return getLocalStaff();
+
+  const { data, error } = await supabase
+    .from("staff_members")
+    .select("id, full_name, email, phone, role, status, created_at")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.warn("Could not load staff members. Run supabase/admin-dashboard-live-data-patch.sql once.", error);
+    return [];
+  }
+
+  return data.map((staff: any) => ({
+    id: staff.id,
+    fullName: staff.full_name,
+    email: staff.email,
+    phone: staff.phone || undefined,
+    role: staff.role,
+    status: staff.status,
+    createdAt: staff.created_at,
+  }));
+}
+
+export async function createStaffMember(input: StaffInput, createdBy?: string): Promise<StaffMember> {
+  if (!isSupabaseConfigured || !supabase) {
+    const staff: StaffMember = {
+      id: crypto.randomUUID(),
+      fullName: input.fullName,
+      email: input.email,
+      phone: input.phone,
+      role: input.role,
+      status: "invited",
+      createdAt: new Date().toISOString(),
+    };
+    saveLocalStaff([staff, ...getLocalStaff().filter((member) => member.email.toLowerCase() !== staff.email.toLowerCase())]);
+    return staff;
+  }
+
+  const { data, error } = await supabase
+    .from("staff_members")
+    .insert({
+      full_name: input.fullName,
+      email: input.email,
+      phone: input.phone || null,
+      role: input.role,
+      status: "invited",
+      created_by: createdBy || null,
+    })
+    .select("id, full_name, email, phone, role, status, created_at")
+    .single();
+
+  if (error) throw error;
+
+  return {
+    id: data.id,
+    fullName: data.full_name,
+    email: data.email,
+    phone: data.phone || undefined,
+    role: data.role,
+    status: data.status,
+    createdAt: data.created_at,
+  };
 }

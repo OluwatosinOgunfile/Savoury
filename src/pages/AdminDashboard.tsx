@@ -1,20 +1,24 @@
 import { useEffect, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
-import { Activity, BarChart3, CheckCircle2, Clock, ListChecks, PackagePlus, Star, Users, XCircle, type LucideIcon } from "lucide-react";
+import { Activity, BarChart3, CheckCircle2, Clock, ListChecks, PackagePlus, Star, UserPlus, Users, X, XCircle, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
+import { useAuth } from "@/hooks/useAuth";
 import { categories, foods } from "@/data/catalog";
 import { formatCurrency } from "@/lib/utils";
 import {
   adminDashboardKeys,
+  createStaffMember,
   fetchAdminActivityEvents,
   fetchAdminCoupons,
   fetchAdminCustomers,
   fetchAdminReviews,
   fetchAdminUserSessions,
+  fetchStaffMembers,
+  type StaffInput,
 } from "@/services/adminDashboardService";
 import { mergeAdminFoods } from "@/services/adminMenuStorage";
 import { fetchCategories, fetchFoods, foodKeys } from "@/services/foodService";
@@ -25,6 +29,8 @@ const orderStatusOptions: AdminOrderStatus[] = ["preparing", "ready", "out_for_d
 
 export function AdminDashboard() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
   const { data: menuFoods = foods } = useQuery({ queryKey: foodKeys.all, queryFn: fetchFoods });
   const { data: menuCategories = categories } = useQuery({ queryKey: foodKeys.categories, queryFn: fetchCategories });
   const { data: customers = [] } = useQuery({ queryKey: adminDashboardKeys.customers, queryFn: fetchAdminCustomers });
@@ -32,12 +38,14 @@ export function AdminDashboard() {
   const { data: activityFeed = [] } = useQuery({ queryKey: adminDashboardKeys.activity, queryFn: fetchAdminActivityEvents, refetchInterval: 30000 });
   const { data: highlightedReviews = [] } = useQuery({ queryKey: adminDashboardKeys.reviews, queryFn: fetchAdminReviews });
   const { data: adminCoupons = [] } = useQuery({ queryKey: adminDashboardKeys.coupons, queryFn: fetchAdminCoupons });
+  const { data: staffMembers = [] } = useQuery({ queryKey: adminDashboardKeys.staff, queryFn: fetchStaffMembers });
 
   const [orders, setOrders] = useState<StoredOrder[]>(() => getAdminOrders());
   const [adminFoods, setAdminFoods] = useState<Food[]>(() => mergeAdminFoods(menuFoods));
   const [orderSearch, setOrderSearch] = useState("");
   const [feedback, setFeedback] = useState("Ready to manage today's operations.");
   const [now, setNow] = useState(() => Date.now());
+  const [staffModalOpen, setStaffModalOpen] = useState(false);
 
   useEffect(() => {
     setAdminFoods(mergeAdminFoods(menuFoods));
@@ -96,6 +104,13 @@ export function AdminDashboard() {
     setFeedback(`Order ${orderId} moved to ${status.replace(/_/g, " ")}.`);
   };
 
+  const addStaff = async (input: StaffInput) => {
+    await createStaffMember(input, user?.id);
+    await queryClient.invalidateQueries({ queryKey: adminDashboardKeys.staff });
+    setFeedback(`${input.fullName} has been added to staff as ${input.role}.`);
+    setStaffModalOpen(false);
+  };
+
   return (
     <main className="app-container py-6">
       <div className="mb-6 flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
@@ -104,8 +119,13 @@ export function AdminDashboard() {
           <h1 className="section-title text-3xl md:text-4xl">Restaurant operations center</h1>
           <p className="mt-2 text-zinc-500">Manage orders, menu, categories, coupons, customers, reviews, images, and analytics.</p>
         </div>
-        <Button size="lg" className="text-base md:text-lg" onClick={() => navigate("/admin/menu")}><ListChecks className="h-5 w-5" /> Menu Manager</Button>
+        <div className="flex flex-wrap gap-2">
+          <Button size="lg" variant="outline" className="text-base md:text-lg" onClick={() => setStaffModalOpen(true)}><UserPlus className="h-5 w-5" /> Add Staff</Button>
+          <Button size="lg" className="text-base md:text-lg" onClick={() => navigate("/admin/menu")}><ListChecks className="h-5 w-5" /> Menu Manager</Button>
+        </div>
       </div>
+
+      {staffModalOpen && <AddStaffModal onClose={() => setStaffModalOpen(false)} onSubmit={addStaff} />}
 
       <div className="mb-6 rounded-xl border border-savoury-primary/20 bg-savoury-accent px-4 py-3 text-sm font-black text-savoury-primary dark:bg-savoury-primary/10">
         {feedback}
@@ -245,6 +265,40 @@ export function AdminDashboard() {
         </Card>
       </section>
 
+      <section className="mt-6">
+        <Card>
+          <CardContent>
+            <div className="mb-4 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+              <div>
+                <h2 className="text-xl font-black">Staff Members</h2>
+                <p className="mt-1 text-sm font-semibold text-zinc-500">Staff added from this dashboard are saved in the database as invited team members.</p>
+              </div>
+              <Button size="sm" onClick={() => setStaffModalOpen(true)}><UserPlus className="h-4 w-4" /> Add Staff</Button>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[680px] text-left text-sm">
+                <thead className="text-xs uppercase text-zinc-400">
+                  <tr><th className="py-3">Name</th><th>Email</th><th>Phone</th><th>Role</th><th>Status</th><th>Added</th></tr>
+                </thead>
+                <tbody>
+                  {staffMembers.map((staff) => (
+                    <tr key={staff.id} className="border-t border-zinc-100 dark:border-white/10">
+                      <td className="py-4 font-black">{staff.fullName}</td>
+                      <td>{staff.email}</td>
+                      <td className="text-zinc-500">{staff.phone || "Not provided"}</td>
+                      <td className="capitalize">{staff.role}</td>
+                      <td><span className="rounded-full bg-savoury-accent px-3 py-1 text-xs font-black capitalize text-savoury-primary dark:bg-savoury-primary/10">{staff.status}</span></td>
+                      <td className="text-xs font-bold text-zinc-500">{formatOrderTime(staff.createdAt)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {staffMembers.length === 0 && <div className="mt-3"><EmptyState text="No staff members have been added yet." /></div>}
+            </div>
+          </CardContent>
+        </Card>
+      </section>
+
       <section className="mt-6 grid gap-6 lg:grid-cols-3">
         <AdminPanel
           icon={PackagePlus}
@@ -306,6 +360,64 @@ function formatWaitingTime(createdAt: string, now: number) {
 
   const elapsedDays = Math.floor(elapsedHours / 24);
   return `${elapsedDays} day${elapsedDays === 1 ? "" : "s"}`;
+}
+
+function AddStaffModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (input: StaffInput) => Promise<void> }) {
+  const [form, setForm] = useState<StaffInput>({ fullName: "", email: "", phone: "", role: "staff" });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setSaving(true);
+    setError("");
+    try {
+      await onSubmit(form);
+    } catch (staffError) {
+      setError(staffError instanceof Error ? staffError.message : "Could not add staff member.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4">
+      <Card className="w-full max-w-lg border-white/10 dark:bg-[#181818]">
+        <CardContent className="p-5">
+          <div className="mb-5 flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.2em] text-savoury-primary">Team access</p>
+              <h2 className="text-xl font-black">Add Staff</h2>
+            </div>
+            <button className="rounded-full p-2 text-zinc-500 transition hover:bg-zinc-100 dark:hover:bg-white/10" onClick={onClose} aria-label="Close add staff modal">
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+          <form className="grid gap-3" onSubmit={submit}>
+            <Input required placeholder="Full name" value={form.fullName} onChange={(event) => setForm({ ...form, fullName: event.target.value })} />
+            <Input required type="email" placeholder="Email address" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} />
+            <Input placeholder="Phone number" value={form.phone || ""} onChange={(event) => setForm({ ...form, phone: event.target.value })} />
+            <select
+              className="h-12 rounded-xl border border-white/10 bg-[#101010] px-4 text-sm font-bold text-white outline-none focus:border-savoury-primary focus:ring-4 focus:ring-[#1f2a12]"
+              value={form.role}
+              onChange={(event) => setForm({ ...form, role: event.target.value as StaffInput["role"] })}
+            >
+              <option value="staff">Staff</option>
+              <option value="manager">Manager</option>
+              <option value="kitchen">Kitchen</option>
+              <option value="delivery">Delivery</option>
+              <option value="admin">Admin</option>
+            </select>
+            {error && <p className="rounded-xl bg-red-500/10 p-3 text-sm font-bold text-red-500">{error}</p>}
+            <div className="mt-2 flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+              <Button disabled={saving}>{saving ? "Adding..." : "Add Staff"}</Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
+  );
 }
 
 function getRevenueForDays(orders: StoredOrder[], days: number) {
