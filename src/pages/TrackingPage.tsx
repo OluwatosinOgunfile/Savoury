@@ -1,12 +1,14 @@
-import { CheckCircle2, ChefHat, Clock, MapPin, PackageCheck, Phone, Truck, XCircle, type LucideIcon } from "lucide-react";
+import { CheckCircle2, ChefHat, Clock, MapPin, MessageSquareText, PackageCheck, Phone, Star, Truck, XCircle, type LucideIcon } from "lucide-react";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { mockOrders } from "@/data/catalog";
+import { useAuth } from "@/hooks/useAuth";
 import { formatCurrency } from "@/lib/utils";
 import { fetchAdminOrders, getAdminOrders, type AdminOrderStatus } from "@/services/orderStorage";
+import { saveOrderReview } from "@/services/reviewService";
 
 type TrackingStatus = Exclude<AdminOrderStatus, "pending">;
 
@@ -19,12 +21,18 @@ const steps: Array<{ id: TrackingStatus; label: string; copy: string; icon: Luci
 
 export function TrackingPage() {
   const { orderId } = useParams();
+  const { user, profile } = useAuth();
   const [orders, setOrders] = useState(() => getAdminOrders());
   const [showReceipt, setShowReceipt] = useState(false);
   const order = orders.find((item) => item.id === orderId) || mockOrders.find((item) => item.id === orderId) || orders[0] || mockOrders[0];
+  const confirmationKey = `savoury-delivery-confirmed-${order.id}`;
+  const reviewKey = `savoury-order-reviewed-${order.id}`;
+  const [deliveryConfirmed, setDeliveryConfirmed] = useState(() => localStorage.getItem(confirmationKey) === "true");
+  const [reviewed, setReviewed] = useState(() => localStorage.getItem(reviewKey) === "true");
   const status = order.status;
   const pending = status === "pending";
   const rejected = status === "rejected";
+  const delivered = status === "delivered";
   const activeIndex = rejected || pending ? -1 : steps.findIndex((step) => step.id === status);
   const progress = activeIndex <= 0 ? 0 : (activeIndex / (steps.length - 1)) * 100;
 
@@ -43,6 +51,29 @@ export function TrackingPage() {
       window.removeEventListener("storage", refreshOrders);
     };
   }, []);
+
+  useEffect(() => {
+    setDeliveryConfirmed(localStorage.getItem(confirmationKey) === "true");
+    setReviewed(localStorage.getItem(reviewKey) === "true");
+  }, [confirmationKey, reviewKey]);
+
+  const confirmDelivery = () => {
+    localStorage.setItem(confirmationKey, "true");
+    setDeliveryConfirmed(true);
+  };
+
+  const submitReview = async (rating: number, comment: string) => {
+    await saveOrderReview({
+      userId: user?.id,
+      customerName: profile?.fullName || order.customerName,
+      orderId: order.id,
+      items: order.items,
+      rating,
+      comment,
+    });
+    localStorage.setItem(reviewKey, "true");
+    setReviewed(true);
+  };
 
   return (
     <main className="bg-savoury-background py-8 text-zinc-950 dark:bg-[#101010] dark:text-white">
@@ -69,6 +100,10 @@ export function TrackingPage() {
           <InfoCard icon={MapPin} label="Delivery Address" value={order.address} />
           <InfoCard icon={Phone} label="Customer Phone" value={order.phone} />
         </section>
+
+        {delivered && !deliveryConfirmed && <DeliveryConfirmationCard orderId={order.id} onConfirm={confirmDelivery} />}
+        {delivered && deliveryConfirmed && !reviewed && <ReviewCard onSubmit={submitReview} />}
+        {delivered && deliveryConfirmed && reviewed && <ReviewThanksCard />}
 
         {pending ? (
           <Card className="mt-5 overflow-hidden border-savoury-primary/20 bg-white shadow-soft dark:border-white/10 dark:bg-[#181818]">
@@ -234,6 +269,101 @@ function InfoCard({ icon: Icon, label, value }: { icon: LucideIcon; label: strin
         <Icon className="h-6 w-6 text-savoury-primary" />
         <p className="mt-3 text-xs font-black uppercase text-zinc-500">{label}</p>
         <p className="mt-1 font-black">{value}</p>
+      </CardContent>
+    </Card>
+  );
+}
+
+function DeliveryConfirmationCard({ orderId, onConfirm }: { orderId: string; onConfirm: () => void }) {
+  return (
+    <Card className="mt-5 overflow-hidden border-savoury-primary/20 bg-white shadow-soft dark:border-white/10 dark:bg-[#181818]">
+      <CardContent className="p-5">
+        <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+          <div className="flex items-start gap-3">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-savoury-accent text-savoury-primary dark:bg-savoury-primary/10">
+              <PackageCheck className="h-5 w-5" />
+            </span>
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-savoury-primary">Delivery confirmation</p>
+              <h2 className="mt-1 text-lg font-black text-zinc-950 dark:text-white">Has order {orderId} been delivered?</h2>
+              <p className="mt-1 max-w-2xl text-sm font-semibold text-zinc-500">
+                The restaurant marked this order as delivered. Please confirm once you have received your food.
+              </p>
+            </div>
+          </div>
+          <Button onClick={onConfirm}><CheckCircle2 className="h-4 w-4" /> Confirm delivery</Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function ReviewCard({ onSubmit }: { onSubmit: (rating: number, comment: string) => Promise<void> }) {
+  const [rating, setRating] = useState(5);
+  const [comment, setComment] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+
+  const submit = async () => {
+    if (comment.trim().length < 4) {
+      setError("Please write a short review before submitting.");
+      return;
+    }
+    setSubmitting(true);
+    setError("");
+    try {
+      await onSubmit(rating, comment.trim());
+    } catch (reviewError) {
+      setError(reviewError instanceof Error ? reviewError.message : "Could not save your review.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <Card className="mt-5 border-savoury-primary/20 bg-white shadow-soft dark:border-white/10 dark:bg-[#181818]">
+      <CardContent className="p-5">
+        <div className="flex items-start gap-3">
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-savoury-accent text-savoury-primary dark:bg-savoury-primary/10">
+            <MessageSquareText className="h-5 w-5" />
+          </span>
+          <div className="w-full">
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-savoury-primary">Rate your order</p>
+            <h2 className="mt-1 text-lg font-black text-zinc-950 dark:text-white">How was your Savoury experience?</h2>
+            <div className="mt-4 flex gap-2">
+              {Array.from({ length: 5 }).map((_, index) => {
+                const value = index + 1;
+                return (
+                  <button key={value} type="button" onClick={() => setRating(value)} className="text-savoury-secondary transition hover:scale-110" aria-label={`Rate ${value} star`}>
+                    <Star className={`h-7 w-7 ${value <= rating ? "fill-current" : ""}`} />
+                  </button>
+                );
+              })}
+            </div>
+            <textarea
+              className="mt-4 min-h-28 w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm font-semibold text-zinc-950 outline-none focus:border-savoury-primary focus:ring-4 focus:ring-savoury-primary/10 dark:border-white/10 dark:bg-zinc-950 dark:text-white"
+              placeholder="Tell us what you enjoyed or what we should improve."
+              value={comment}
+              onChange={(event) => setComment(event.target.value)}
+            />
+            {error && <p className="mt-2 text-sm font-bold text-red-500">{error}</p>}
+            <Button className="mt-4" onClick={submit} disabled={submitting}>{submitting ? "Submitting..." : "Submit review"}</Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function ReviewThanksCard() {
+  return (
+    <Card className="mt-5 border-savoury-primary/20 bg-savoury-accent dark:border-savoury-primary/30 dark:bg-savoury-primary/10">
+      <CardContent className="flex items-center gap-3 p-5">
+        <CheckCircle2 className="h-6 w-6 text-savoury-primary" />
+        <div>
+          <h2 className="font-black text-zinc-950 dark:text-white">Thank you for your feedback.</h2>
+          <p className="text-sm font-semibold text-zinc-600 dark:text-zinc-300">Your review helps Savoury improve future orders.</p>
+        </div>
       </CardContent>
     </Card>
   );
