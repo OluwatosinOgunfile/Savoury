@@ -30,7 +30,9 @@ async function sendStaffEmail(input: {
 }) {
   const resendApiKey = Deno.env.get("RESEND_API_KEY");
   const fromEmail = Deno.env.get("STAFF_INVITE_FROM_EMAIL") || "Savoury <onboarding@resend.dev>";
-  if (!resendApiKey) return false;
+  if (!resendApiKey) {
+    throw new Error("RESEND_API_KEY is not configured, so the staff login email could not be sent.");
+  }
 
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -62,7 +64,7 @@ async function sendStaffEmail(input: {
   if (!response.ok) {
     const text = await response.text();
     console.error("Resend email failed", text);
-    return false;
+    throw new Error(`Staff login email could not be sent: ${text}`);
   }
 
   return true;

@@ -404,6 +404,7 @@ function AddStaffModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (
             <div>
               <p className="text-xs font-black uppercase tracking-[0.2em] text-savoury-primary">Team access</p>
               <h2 className="text-xl font-black">Add Staff</h2>
+              <p className="mt-1 text-sm font-semibold text-zinc-500">A dashboard login email will be sent to the staff member.</p>
             </div>
             <button className="rounded-full p-2 text-zinc-500 transition hover:bg-zinc-100 dark:hover:bg-white/10" onClick={onClose} aria-label="Close add staff modal">
               <X className="h-5 w-5" />
