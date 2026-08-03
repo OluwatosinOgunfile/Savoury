@@ -71,13 +71,31 @@ export function TrackingPage() {
         </section>
 
         {pending ? (
-          <Card className="mt-6 border-amber-200 bg-amber-50 dark:border-amber-500/30 dark:bg-amber-950/20">
-            <CardContent className="text-center">
-              <Clock className="mx-auto h-14 w-14 text-amber-600" />
-              <h2 className="mt-4 text-2xl font-black text-amber-700 dark:text-amber-300">Awaiting Restaurant Confirmation</h2>
-              <p className="mx-auto mt-2 max-w-xl text-sm font-semibold text-amber-700/80 dark:text-amber-200/80">
-                Your order has been submitted and is waiting for the admin team to accept or reject it.
-              </p>
+          <Card className="mt-5 overflow-hidden border-savoury-primary/20 bg-white shadow-soft dark:border-white/10 dark:bg-[#181818]">
+            <CardContent className="p-4 md:p-5">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-start gap-3">
+                  <span className="relative mt-1 grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-savoury-accent text-savoury-primary dark:bg-savoury-primary/10">
+                    <Clock className="h-5 w-5" />
+                    <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-savoury-secondary ring-4 ring-white dark:ring-[#181818]" />
+                  </span>
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h2 className="text-base font-black text-zinc-950 dark:text-white">Awaiting restaurant confirmation</h2>
+                      <span className="rounded-full bg-savoury-accent px-2.5 py-1 text-[11px] font-black uppercase text-savoury-primary dark:bg-savoury-primary/10">
+                        Pending
+                      </span>
+                    </div>
+                    <p className="mt-1 max-w-2xl text-sm font-semibold text-zinc-500">
+                      Your order is in the kitchen queue. The restaurant will accept it and start preparing, or reject it if unavailable.
+                    </p>
+                  </div>
+                </div>
+                <div className="rounded-xl border border-zinc-100 bg-zinc-50 px-4 py-3 text-sm dark:border-white/10 dark:bg-white/5">
+                  <p className="text-xs font-black uppercase text-zinc-500">Next update</p>
+                  <p className="font-black text-zinc-950 dark:text-white">Preparing</p>
+                </div>
+              </div>
             </CardContent>
           </Card>
         ) : rejected ? (
