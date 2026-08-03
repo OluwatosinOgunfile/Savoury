@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { isSupabaseConfigured } from "@/lib/supabase";
-import { sendPasswordReset, signInWithEmail, signInWithGoogle } from "@/services/authService";
+import { getPostLoginPath, sendPasswordReset, signInWithEmail, signInWithGoogle } from "@/services/authService";
 
 const loginSchema = z.object({
   email: z.string().email("Enter a valid email address."),
@@ -33,10 +33,16 @@ export function LoginPage() {
     }
     setLoading(true);
     try {
-      await signInWithEmail(form);
-      navigate(from, { replace: true });
+      const signedInUser = await signInWithEmail(form);
+      const nextPath = await getPostLoginPath("id" in signedInUser ? signedInUser.id : undefined, form.email, from);
+      navigate(nextPath, { replace: true });
     } catch (authError) {
-      setError(authError instanceof Error ? authError.message : "Login failed. Please try again.");
+      const authMessage = authError instanceof Error ? authError.message : "Login failed. Please try again.";
+      setError(
+        form.email.trim().toLowerCase().startsWith("restaurant@") && authMessage.toLowerCase().includes("invalid")
+          ? "This restaurant staff login has not been created in Supabase Auth yet. Create it from the main admin Add Staff button or run npm.cmd run restaurant:create."
+          : authMessage
+      );
     } finally {
       setLoading(false);
     }

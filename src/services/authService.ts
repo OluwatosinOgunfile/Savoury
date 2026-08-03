@@ -46,6 +46,40 @@ export async function signInWithEmail({ email, password }: AuthCredentials) {
   return data.user;
 }
 
+export async function getPostLoginPath(userId: string | undefined, email: string, fallbackPath: string) {
+  if (!isSupabaseConfigured || !supabase) {
+    try {
+      const stored = JSON.parse(localStorage.getItem("savoury-demo-user") || "{}") as { role?: string; staffRole?: string };
+      if (stored.role === "restaurant_staff") return "/restaurant";
+      if (stored.role === "admin") return "/admin";
+    } catch {
+      return fallbackPath;
+    }
+    return fallbackPath;
+  }
+
+  const normalizedEmail = email.trim().toLowerCase();
+  const { data: staffMember } = await supabase
+    .from("staff_members")
+    .select("role, status")
+    .eq("email", normalizedEmail)
+    .eq("status", "active")
+    .maybeSingle();
+
+  if (staffMember?.role && staffMember.role !== "admin") return "/restaurant";
+
+  if (!userId) return fallbackPath;
+
+  const { data: appUser } = await supabase
+    .from("users")
+    .select("role")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (appUser?.role === "admin") return "/admin";
+  return fallbackPath;
+}
+
 export async function signUpWithEmail({ email, password, fullName, phone }: AuthCredentials) {
   if (!isSupabaseConfigured || !supabase) {
     localStorage.setItem("savoury-demo-user", JSON.stringify({ email, fullName, phone }));
