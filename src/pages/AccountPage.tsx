@@ -51,6 +51,34 @@ const tabs = [
 
 type AccountTab = (typeof tabs)[number]["label"];
 
+const ileIfeLocations = [
+  "Ile-Ife",
+  "Mayfair",
+  "Lagere",
+  "OAU Campus",
+  "OAU Teaching Hospital",
+  "Parakin",
+  "Eleyele",
+  "Modakeke",
+  "Akarabata",
+  "Iremo",
+  "Moore",
+  "Sabo",
+  "Ilode",
+  "Ibadan Road",
+  "Road 7",
+  "Ede Road",
+  "Garage Olode",
+  "Fajuyi Road",
+  "AP Area",
+  "Ondo Road",
+  "Ita-Osa",
+  "Enuwa",
+  "Iloro",
+  "Oke-Ogbo",
+  "Ajebamidele",
+];
+
 export function AccountPage() {
   const [active, setActive] = useState<AccountTab>("Profile");
   const [message, setMessage] = useState("");
@@ -278,7 +306,7 @@ function ProfilePanel({ profile, onSave }: { profile: ReturnType<typeof useAuth>
 }
 
 function AddressesPanel({ addresses, onSave, onDefault, onDelete }: { addresses: Address[]; onSave: (address: Omit<Address, "id"> & { id?: string }) => Promise<void>; onDefault: (addressId: string) => Promise<void>; onDelete: (addressId: string) => Promise<void> }) {
-  const emptyForm = { label: "", line1: "", city: "Lagos", distanceKm: 3, default: false };
+  const emptyForm = { label: "", line1: "", city: ileIfeLocations[0], distanceKm: 3, default: false };
   const [form, setForm] = useState<Omit<Address, "id"> & { id?: string }>(emptyForm);
   const [saving, setSaving] = useState(false);
 
@@ -297,7 +325,14 @@ function AddressesPanel({ addresses, onSave, onDefault, onDelete }: { addresses:
     <Panel icon={MapPin} title="Saved Addresses">
       <form onSubmit={submit} className="grid gap-3 rounded-2xl border border-zinc-100 bg-zinc-50 p-4 dark:border-white/10 dark:bg-white/5 md:grid-cols-2">
         <Input required placeholder="Label, e.g. Home" value={form.label} onChange={(event) => setForm({ ...form, label: event.target.value })} />
-        <Input required placeholder="City" value={form.city} onChange={(event) => setForm({ ...form, city: event.target.value })} />
+        <select
+          required
+          className="h-12 w-full rounded-xl border border-white/10 bg-[#101010] px-4 text-sm font-bold text-white outline-none transition focus:border-savoury-primary focus:ring-4 focus:ring-[#1f2a12]"
+          value={ileIfeLocations.includes(form.city) ? form.city : ileIfeLocations[0]}
+          onChange={(event) => setForm({ ...form, city: event.target.value })}
+        >
+          {ileIfeLocations.map((location) => <option key={location} value={location}>{location}</option>)}
+        </select>
         <Input required className="md:col-span-2" placeholder="Full address" value={form.line1} onChange={(event) => setForm({ ...form, line1: event.target.value })} />
         <label className="flex items-center gap-2 text-sm font-bold text-zinc-600 dark:text-zinc-300">
           <input type="checkbox" checked={Boolean(form.default)} onChange={(event) => setForm({ ...form, default: event.target.checked })} />
@@ -313,7 +348,7 @@ function AddressesPanel({ addresses, onSave, onDefault, onDelete }: { addresses:
               <p className="text-sm text-zinc-500">{address.line1}, {address.city}</p>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button size="sm" variant="outline" onClick={() => setForm(address)}>Edit</Button>
+              <Button size="sm" variant="outline" onClick={() => setForm({ ...address, city: ileIfeLocations.includes(address.city) ? address.city : ileIfeLocations[0] })}>Edit</Button>
               <Button size="sm" variant="outline" onClick={() => onDefault(address.id)}>Default</Button>
               <Button size="sm" variant="outline" onClick={() => onDelete(address.id)}><Trash2 className="h-4 w-4" /> Delete</Button>
             </div>
