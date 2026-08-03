@@ -6,6 +6,7 @@ import {
   Check,
   Heart,
   History,
+  ImagePlus,
   KeyRound,
   LayoutDashboard,
   LogOut,
@@ -233,12 +234,42 @@ function ProfilePanel({ profile, onSave }: { profile: ReturnType<typeof useAuth>
     }
   };
 
+  const uploadPhoto = (file?: File) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      setForm((current) => ({ ...current, avatarUrl: String(reader.result || "") }));
+    };
+    reader.readAsDataURL(file);
+  };
+
   return (
     <Panel icon={UserRound} title="Profile Details" action={<Button form="profile-form" size="sm" disabled={saving}>{saving ? "Saving..." : "Save changes"}</Button>}>
       <form id="profile-form" onSubmit={submit} className="grid gap-4 md:grid-cols-2">
         <Input required placeholder="Full name" value={form.fullName} onChange={(event) => setForm({ ...form, fullName: event.target.value })} />
         <Input placeholder="Phone number" value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} />
-        <Input className="md:col-span-2" placeholder="Avatar image URL" value={form.avatarUrl} onChange={(event) => setForm({ ...form, avatarUrl: event.target.value })} />
+        <div className="rounded-2xl border border-zinc-100 bg-zinc-50 p-4 dark:border-white/10 dark:bg-white/5 md:col-span-2">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3">
+              {form.avatarUrl ? (
+                <img src={form.avatarUrl} alt="Profile preview" className="h-16 w-16 rounded-xl object-cover" />
+              ) : (
+                <div className="grid h-16 w-16 place-items-center rounded-xl bg-savoury-primary text-lg font-black text-white">
+                  {(form.fullName || "SC").slice(0, 2).toUpperCase()}
+                </div>
+              )}
+              <div>
+                <p className="font-black text-zinc-950 dark:text-white">Profile photo</p>
+                <p className="text-sm text-zinc-500">Upload an image from your device.</p>
+              </div>
+            </div>
+            <label className="inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-xl bg-savoury-primary px-4 text-sm font-bold text-white transition hover:bg-[#445626]">
+              <ImagePlus className="h-4 w-4" />
+              Upload photo
+              <input className="sr-only" type="file" accept="image/*" onChange={(event) => uploadPhoto(event.target.files?.[0])} />
+            </label>
+          </div>
+        </div>
         <Info label="Email" value={profile?.email || "Not provided"} />
         <Info label="Loyalty points" value={`${profile?.loyaltyPoints || 0} points`} />
       </form>
