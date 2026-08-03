@@ -122,12 +122,19 @@ export function TrackingPage() {
               </div>
 
               <div className="relative">
-                <div className="absolute left-6 top-6 h-[calc(100%-3rem)] w-1 rounded-full bg-zinc-100 dark:bg-white/10 md:left-0 md:top-8 md:h-1 md:w-full" />
+                <div className="absolute left-6 top-6 h-[calc(100%-3rem)] w-1 rounded-full bg-zinc-100 dark:bg-white/10 md:hidden" />
                 <motion.div
-                  className="absolute left-6 top-6 w-1 rounded-full bg-savoury-primary md:left-0 md:top-8 md:h-1"
-                  initial={{ height: 0, width: 0 }}
-                  animate={{ height: `${progress}%`, width: `${progress}%` }}
-                  transition={{ duration: 0.6, ease: "easeOut" }}
+                  className="absolute left-6 top-6 w-1 rounded-full bg-gradient-to-b from-savoury-primary to-[#7f9a48] shadow-[0_0_18px_rgba(85,107,47,0.45)] md:hidden"
+                  initial={{ height: 0 }}
+                  animate={{ height: `calc((100% - 3rem) * ${progress / 100})` }}
+                  transition={{ duration: 0.8, ease: "easeOut" }}
+                />
+                <div className="absolute left-0 top-8 hidden h-1 w-full rounded-full bg-zinc-100 dark:bg-white/10 md:block" />
+                <motion.div
+                  className="absolute left-0 top-8 hidden h-1 rounded-full bg-gradient-to-r from-savoury-primary to-[#7f9a48] shadow-[0_0_18px_rgba(85,107,47,0.45)] md:block"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${progress}%` }}
+                  transition={{ duration: 0.8, ease: "easeOut" }}
                 />
                 <div className="relative grid gap-6 md:grid-cols-4">
                   {steps.map((step, index) => {
