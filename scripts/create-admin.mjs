@@ -28,15 +28,21 @@ async function must(label, promise) {
 
 const env = readEnvFile(".env.local");
 const supabaseUrl = env.VITE_SUPABASE_URL;
-const serviceKey = env.SUPABASE_SERVICE_ROLE_KEY || env.VITE_SUPABASE_SECRET_KEY;
+const serviceKey = env.SUPABASE_SERVICE_ROLE_KEY;
 
-const adminEmail = process.env.SAVOURY_ADMIN_EMAIL || "admin@savoury.ng";
-const adminPassword = process.env.SAVOURY_ADMIN_PASSWORD || "SavouryAdmin@2026!";
+const adminEmail = process.env.SAVOURY_ADMIN_EMAIL || env.SAVOURY_ADMIN_EMAIL;
+const adminPassword = process.env.SAVOURY_ADMIN_PASSWORD || env.SAVOURY_ADMIN_PASSWORD;
 const adminName = process.env.SAVOURY_ADMIN_NAME || "Savoury Admin";
 
 if (!supabaseUrl || !serviceKey) {
   console.error("Missing VITE_SUPABASE_URL and a service-role key in .env.local.");
-  console.error("Add SUPABASE_SERVICE_ROLE_KEY, or use your existing VITE_SUPABASE_SECRET_KEY for this local script.");
+  console.error("Add SUPABASE_SERVICE_ROLE_KEY for this local script.");
+  process.exit(1);
+}
+
+if (!adminEmail || !adminPassword) {
+  console.error("Missing SAVOURY_ADMIN_EMAIL or SAVOURY_ADMIN_PASSWORD.");
+  console.error("Set them in .env.local or in your shell before running npm.cmd run admin:create.");
   process.exit(1);
 }
 

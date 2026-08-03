@@ -9,10 +9,6 @@ export interface AuthCredentials {
 }
 
 const authRedirectUrl = appEnv.authRedirectUrl;
-const DEMO_ADMIN_EMAIL = "admin@savoury.local";
-const DEMO_ADMIN_PASSWORD = "admin123";
-const RESTAURANT_POS_EMAIL = "restaurant@savoury.ng";
-const RESTAURANT_POS_PASSWORD = "Restaurant@2026!";
 
 function callbackUrl() {
   const normalizedUrl = authRedirectUrl.replace(/\/$/, "");
@@ -20,25 +16,7 @@ function callbackUrl() {
 }
 
 export async function signInWithEmail({ email, password }: AuthCredentials) {
-  const normalizedEmail = email.trim().toLowerCase();
-  if (normalizedEmail === RESTAURANT_POS_EMAIL && password === RESTAURANT_POS_PASSWORD) {
-    localStorage.setItem(
-      "savoury-demo-user",
-      JSON.stringify({ email: normalizedEmail, fullName: "Restaurant POS", role: "restaurant_staff", staffRole: "staff" })
-    );
-    window.dispatchEvent(new Event("savoury-demo-auth-updated"));
-    return { email: normalizedEmail };
-  }
-
   if (!isSupabaseConfigured || !supabase) {
-    if (email === DEMO_ADMIN_EMAIL && password === DEMO_ADMIN_PASSWORD) {
-      localStorage.setItem(
-        "savoury-demo-user",
-        JSON.stringify({ email, fullName: "Savoury Admin", role: "admin" })
-      );
-      return { email };
-    }
-
     localStorage.setItem("savoury-demo-user", JSON.stringify({ email, fullName: "Demo Customer" }));
     return { email };
   }

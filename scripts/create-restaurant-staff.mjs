@@ -28,17 +28,23 @@ async function must(label, promise) {
 
 const env = readEnvFile(".env.local");
 const supabaseUrl = env.VITE_SUPABASE_URL;
-const serviceKey = env.SUPABASE_SERVICE_ROLE_KEY || env.VITE_SUPABASE_SECRET_KEY;
+const serviceKey = env.SUPABASE_SERVICE_ROLE_KEY;
 
-const staffEmail = process.env.SAVOURY_RESTAURANT_EMAIL || "restaurant@savoury.ng";
-const staffPassword = process.env.SAVOURY_RESTAURANT_PASSWORD || "Restaurant@2026!";
+const staffEmail = process.env.SAVOURY_RESTAURANT_EMAIL || env.SAVOURY_RESTAURANT_EMAIL;
+const staffPassword = process.env.SAVOURY_RESTAURANT_PASSWORD || env.SAVOURY_RESTAURANT_PASSWORD;
 const staffName = process.env.SAVOURY_RESTAURANT_NAME || "Restaurant Cashier";
 const staffPhone = process.env.SAVOURY_RESTAURANT_PHONE || "";
 const staffRole = process.env.SAVOURY_RESTAURANT_ROLE || "staff";
 
 if (!supabaseUrl || !serviceKey) {
   console.error("Missing VITE_SUPABASE_URL and a service-role key in .env.local.");
-  console.error("Add SUPABASE_SERVICE_ROLE_KEY, or use your existing VITE_SUPABASE_SECRET_KEY for this local script.");
+  console.error("Add SUPABASE_SERVICE_ROLE_KEY for this local script.");
+  process.exit(1);
+}
+
+if (!staffEmail || !staffPassword) {
+  console.error("Missing SAVOURY_RESTAURANT_EMAIL or SAVOURY_RESTAURANT_PASSWORD.");
+  console.error("Set them in .env.local or in your shell before running npm.cmd run restaurant:create.");
   process.exit(1);
 }
 

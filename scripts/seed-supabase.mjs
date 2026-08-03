@@ -22,7 +22,7 @@ function readEnvFile(path) {
 
 const env = readEnvFile(".env.local");
 const supabaseUrl = env.VITE_SUPABASE_URL;
-const serviceKey = env.SUPABASE_SERVICE_ROLE_KEY || env.VITE_SUPABASE_SECRET_KEY;
+const serviceKey = env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!supabaseUrl || !serviceKey) {
   console.error("Missing VITE_SUPABASE_URL and a service-role key in .env.local.");
