@@ -14,6 +14,7 @@ export interface AuthProfile {
   role: UserRole;
   accountStatus: "active" | "suspended" | "unprovisioned";
   permissions: string[];
+  mustChangePassword: boolean;
   loyaltyPoints: number;
 }
 
@@ -47,6 +48,7 @@ function demoProfile(): AuthProfile | null {
     role: isUserRole(user.role) ? user.role : "customer",
     accountStatus: "active",
     permissions: [],
+    mustChangePassword: false,
     loyaltyPoints: 250,
   };
 }
@@ -65,6 +67,7 @@ function profileFromUser(user: User): AuthProfile {
     role: "customer",
     accountStatus: "active",
     permissions: [],
+    mustChangePassword: false,
     loyaltyPoints: 0,
   };
 }
@@ -99,16 +102,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const baseRole: UserRole = isUserRole(appUser?.role) ? appUser.role : "customer";
     let accountStatus: AuthProfile["accountStatus"] = "active";
     let permissions: string[] = [];
+    let mustChangePassword = false;
 
     if (baseRole === "sales_rep") {
       const { data: salesRep, error: salesRepError } = await supabase
         .from("sales_representatives")
-        .select("status, permissions")
+        .select("status, permissions, must_change_password")
         .eq("auth_user_id", activeUser.id)
         .maybeSingle();
 
       accountStatus = salesRepError || !salesRep ? "unprovisioned" : salesRep.status === "active" ? "active" : "suspended";
       permissions = Array.isArray(salesRep?.permissions) ? salesRep.permissions : [];
+      mustChangePassword = salesRep?.must_change_password === true;
     }
 
     return {
@@ -121,6 +126,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       role: baseRole,
       accountStatus,
       permissions,
+      mustChangePassword,
     };
   }, []);
 

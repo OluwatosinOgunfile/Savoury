@@ -15,7 +15,7 @@ export function AuthCallbackPage() {
         return;
       }
       if (profile?.role === "sales_rep") {
-        navigate("/pos", { replace: true });
+        navigate(profile.mustChangePassword ? "/change-password" : "/pos", { replace: true });
         return;
       }
       navigate("/account", { replace: true });

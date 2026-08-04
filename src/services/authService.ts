@@ -55,7 +55,30 @@ export async function getPostLoginPath(userId: string | undefined, fallbackPath:
 
   if (error) throw new Error("Your account role could not be verified. Please try signing in again.");
   const role = isUserRole(appUser?.role) ? appUser.role : "customer";
+  if (role === "sales_rep") {
+    const { data: salesRep, error: salesRepError } = await supabase
+      .from("sales_representatives")
+      .select("status, must_change_password")
+      .eq("auth_user_id", userId)
+      .maybeSingle();
+    if (salesRepError) throw new Error("Your POS account status could not be verified. Contact an administrator.");
+    if (salesRep?.status === "active" && salesRep.must_change_password) return "/change-password";
+  }
   return postLoginPath(role, fallbackPath);
+}
+
+export async function completeFirstLoginPasswordChange(password: string) {
+  if (!isSupabaseConfigured || !supabase) throw new Error("Authentication is not configured.");
+
+  const { error: passwordError } = await supabase.auth.updateUser({ password });
+  if (passwordError) throw passwordError;
+
+  const { data, error } = await supabase.functions.invoke("manage-sales-rep", {
+    body: { action: "complete_password_change" },
+  });
+  if (error || data?.error) {
+    throw new Error(data?.error || error?.message || "The password changed, but the first-login requirement could not be cleared. Please retry.");
+  }
 }
 
 export async function signUpWithEmail({ email, password, fullName, phone }: AuthCredentials) {

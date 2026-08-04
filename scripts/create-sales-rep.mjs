@@ -62,7 +62,7 @@ const { error: roleSchemaError } = await supabase
 
 const { error: posSchemaError } = await supabase
   .from("sales_representatives")
-  .select("id")
+  .select("id, must_change_password")
   .limit(1);
 
 if (roleSchemaError || posSchemaError) {
@@ -145,6 +145,7 @@ await must(
       phone: salesPhone || null,
       status: "active",
       permissions: ["discounts", "reports"],
+      must_change_password: true,
     },
     { onConflict: "email" }
   )

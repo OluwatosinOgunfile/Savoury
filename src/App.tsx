@@ -11,6 +11,7 @@ import { CartPage } from "@/pages/CartPage";
 import { RequireAdmin } from "@/components/RequireAdmin";
 import { CheckoutPage } from "@/pages/CheckoutPage";
 import { FoodDetailsPage } from "@/pages/FoodDetailsPage";
+import { FirstLoginPasswordPage } from "@/pages/FirstLoginPasswordPage";
 import { HomePage } from "@/pages/HomePage";
 import { LoginPage } from "@/pages/LoginPage";
 import { MenuPage } from "@/pages/MenuPage";
@@ -42,6 +43,7 @@ export function App() {
         <Route path="track/:orderId" element={<RequireCustomer><TrackingPage /></RequireCustomer>} />
         <Route path="account" element={<RequireCustomer><AccountPage /></RequireCustomer>} />
         <Route path="auth/callback" element={<AuthCallbackPage />} />
+        <Route path="change-password" element={<FirstLoginPasswordPage />} />
         <Route path="login" element={<LoginPage />} />
         <Route path="signup" element={<SignupPage />} />
         <Route path="pos" element={<RequireSalesRep><SalesRepPosPage /></RequireSalesRep>} />

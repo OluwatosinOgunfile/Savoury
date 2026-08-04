@@ -46,7 +46,7 @@ const { data: appUser, error: roleError } = await client
 
 const { data: salesRep, error: repError } = await client
   .from("sales_representatives")
-  .select("status, permissions")
+  .select("status, permissions, must_change_password")
   .eq("auth_user_id", login.user.id)
   .maybeSingle();
 
@@ -55,5 +55,6 @@ console.log(`Role: ${roleError ? `query failed (${roleError.message})` : appUser
 console.log(`POS profile: ${repError ? `query failed (${repError.message})` : salesRep ? "found" : "missing"}`);
 console.log(`Status: ${salesRep?.status || "unavailable"}`);
 console.log(`Permissions: ${salesRep?.permissions?.join(", ") || "none"}`);
+console.log(`Must change password: ${salesRep?.must_change_password === true}`);
 
 await client.auth.signOut();

@@ -40,11 +40,22 @@ serve(async (req) => {
 
     const { data: caller } = await userClient.auth.getUser();
     if (!caller.user) return json({ error: "You must be signed in." }, 401);
-    const { data: callerRow } = await adminClient.from("users").select("role").eq("id", caller.user.id).maybeSingle();
-    if (callerRow?.role !== "admin") return json({ error: "Only admins can manage sales representatives." }, 403);
-
     const body = await req.json();
     const action = String(body.action || "upsert");
+    const { data: callerRow } = await adminClient.from("users").select("role").eq("id", caller.user.id).maybeSingle();
+
+    if (action === "complete_password_change") {
+      if (callerRow?.role !== "sales_rep") return json({ error: "Only Sales Representatives can complete this password change." }, 403);
+      const { error } = await adminClient
+        .from("sales_representatives")
+        .update({ must_change_password: false, updated_at: new Date().toISOString() })
+        .eq("auth_user_id", caller.user.id);
+      if (error) return json({ error: error.message }, 400);
+      return json({ success: true });
+    }
+
+    if (callerRow?.role !== "admin") return json({ error: "Only admins can manage sales representatives." }, 403);
+
     const email = String(body.email || "").trim().toLowerCase();
     const fullName = String(body.fullName || body.full_name || "").trim();
     const phone = String(body.phone || "").trim();
@@ -59,6 +70,11 @@ serve(async (req) => {
       const nextPassword = temporaryPassword();
       const { error } = await adminClient.auth.admin.updateUserById(userId, { password: nextPassword, email_confirm: true });
       if (error) return json({ error: error.message }, 400);
+      const { error: requirementError } = await adminClient
+        .from("sales_representatives")
+        .update({ must_change_password: true, updated_at: new Date().toISOString() })
+        .eq("auth_user_id", userId);
+      if (requirementError) return json({ error: requirementError.message }, 400);
       return json({ temporaryPassword: nextPassword });
     }
 
@@ -108,12 +124,13 @@ serve(async (req) => {
           phone: phone || null,
           status,
           permissions,
+          ...(createdAuthUser ? { must_change_password: true } : {}),
           created_by: caller.user.id,
           updated_at: new Date().toISOString(),
         },
         { onConflict: "email" },
       )
-      .select("id, full_name, email, phone, staff_id, status, permissions, created_at, last_login_at")
+      .select("id, full_name, email, phone, staff_id, status, permissions, must_change_password, created_at, last_login_at")
       .single();
 
     if (repError) {
@@ -129,6 +146,7 @@ serve(async (req) => {
         staffId: rep.staff_id,
         status: rep.status,
         permissions: rep.permissions || [],
+        mustChangePassword: rep.must_change_password,
         createdAt: rep.created_at,
         lastLoginAt: rep.last_login_at,
       },

@@ -23,6 +23,10 @@ export function RequireSalesRep({ children }: { children: ReactNode }) {
 
   if (!isAuthenticated) return <Navigate to="/login" state={{ from: location }} replace />;
 
+  if (profile?.role === "sales_rep" && profile.accountStatus === "active" && profile.mustChangePassword) {
+    return <Navigate to="/change-password" replace />;
+  }
+
   if (profile?.role !== "sales_rep" || profile.accountStatus !== "active") {
     return (
       <main className="app-container grid min-h-[60vh] place-items-center py-10">

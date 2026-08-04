@@ -13,6 +13,7 @@ export interface SalesRepresentative {
   staffId: string;
   status: "active" | "suspended";
   permissions: SalesRepPermission[];
+  mustChangePassword?: boolean;
   createdAt: string;
   lastLoginAt?: string;
   temporaryPassword?: string;
@@ -120,7 +121,7 @@ export async function fetchSalesRepresentatives(): Promise<SalesRepresentative[]
   if (!isSupabaseConfigured || !supabase) return getSalesRepresentatives();
   const { data, error } = await supabase
     .from("sales_representatives")
-    .select("id, full_name, email, phone, staff_id, status, permissions, created_at, last_login_at")
+    .select("id, full_name, email, phone, staff_id, status, permissions, must_change_password, created_at, last_login_at")
     .order("created_at", { ascending: false });
   if (error) {
     console.warn("Could not load sales representatives. Run supabase/pos-sales-rep-patch.sql once.", error);
@@ -134,6 +135,7 @@ export async function fetchSalesRepresentatives(): Promise<SalesRepresentative[]
     staffId: rep.staff_id,
     status: rep.status,
     permissions: rep.permissions || [],
+    mustChangePassword: rep.must_change_password === true,
     createdAt: rep.created_at,
     lastLoginAt: rep.last_login_at || undefined,
   }));

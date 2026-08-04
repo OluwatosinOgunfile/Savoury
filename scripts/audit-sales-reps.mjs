@@ -27,7 +27,7 @@ const client = createClient(env.VITE_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY
 
 const { data: reps, error: repsError } = await client
   .from("sales_representatives")
-  .select("email, auth_user_id, status")
+  .select("email, auth_user_id, status, must_change_password")
   .order("created_at");
 if (repsError) throw repsError;
 
@@ -48,6 +48,7 @@ for (const rep of reps) {
       linkedToAuthUser: Boolean(authUser && rep.auth_user_id === authUser.id),
       role: appUser?.role || "missing",
       emailConfirmed: Boolean(authUser?.email_confirmed_at),
+      mustChangePassword: rep.must_change_password === true,
     })
   );
 }

@@ -14,6 +14,7 @@ create table if not exists public.sales_representatives (
   staff_id text unique not null default ('SV-POS-' || upper(substr(gen_random_uuid()::text, 1, 6))),
   status text not null default 'active' check (status in ('active', 'suspended')),
   permissions text[] not null default array['discounts']::text[],
+  must_change_password boolean not null default true,
   last_login_at timestamptz,
   created_by uuid references public.users(id) on delete set null,
   created_at timestamptz not null default now(),
