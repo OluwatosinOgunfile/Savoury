@@ -176,11 +176,16 @@ export function SalesRepPosPage() {
   };
 
   const completePayment = async (payment: PosPayment) => {
+    if (!profile?.id || !profile.fullName.trim()) {
+      setToast("Your cashier profile could not be verified. Sign out and sign in again.");
+      return;
+    }
+
     const receipt: PosReceipt = {
       id: crypto.randomUUID(),
       receiptNumber: `SV-${Date.now().toString().slice(-8)}`,
-      cashierId: profile?.id,
-      cashierName: profile?.fullName || "Sales Representative",
+      cashierId: profile.id,
+      cashierName: profile.fullName.trim(),
       customerName: customer.name || undefined,
       phone: customer.phone || undefined,
       tableNumber: customer.tableNumber || undefined,

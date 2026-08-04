@@ -103,22 +103,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let accountStatus: AuthProfile["accountStatus"] = "active";
     let permissions: string[] = [];
     let mustChangePassword = false;
+    let resolvedFullName = data.full_name;
 
     if (baseRole === "sales_rep") {
       const { data: salesRep, error: salesRepError } = await supabase
         .from("sales_representatives")
-        .select("status, permissions, must_change_password")
+        .select("full_name, status, permissions, must_change_password")
         .eq("auth_user_id", activeUser.id)
         .maybeSingle();
 
       accountStatus = salesRepError || !salesRep ? "unprovisioned" : salesRep.status === "active" ? "active" : "suspended";
       permissions = Array.isArray(salesRep?.permissions) ? salesRep.permissions : [];
       mustChangePassword = salesRep?.must_change_password === true;
+      resolvedFullName = salesRep?.full_name?.trim() || resolvedFullName;
     }
 
     return {
       id: data.id,
-      fullName: data.full_name,
+      fullName: resolvedFullName,
       phone: data.phone || undefined,
       avatarUrl: data.avatar_url || undefined,
       loyaltyPoints: data.loyalty_points || 0,

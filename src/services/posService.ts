@@ -241,26 +241,45 @@ export function calculatePosSummary(receipts = getLocalReceipts()): PosSalesSumm
 
 export async function createPosReceipt(receipt: PosReceipt) {
   let synced = false;
+  let verifiedReceipt = receipt;
   if (isSupabaseConfigured && supabase && navigator.onLine) {
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+    if (authError || !authData.user) throw new Error("Your cashier session could not be verified. Sign in again.");
+
+    const { data: cashier, error: cashierError } = await supabase
+      .from("sales_representatives")
+      .select("full_name, status")
+      .eq("auth_user_id", authData.user.id)
+      .maybeSingle();
+    if (cashierError || !cashier || cashier.status !== "active" || !cashier.full_name?.trim()) {
+      throw new Error("Your active Sales Representative profile could not be verified.");
+    }
+
+    verifiedReceipt = {
+      ...receipt,
+      cashierId: authData.user.id,
+      cashierName: cashier.full_name.trim(),
+    };
+
     const { error: stockError } = await supabase.rpc("reserve_food_stock", {
-      items: receipt.items.map((item) => ({ food_id: item.food.id, quantity: item.quantity })),
+      items: verifiedReceipt.items.map((item) => ({ food_id: item.food.id, quantity: item.quantity })),
     });
     if (stockError) throw new Error(stockError.message || "One or more items are out of stock.");
 
     const { data: order, error: orderError } = await supabase
       .from("pos_orders")
       .insert({
-        receipt_number: receipt.receiptNumber,
-        cashier_id: receipt.cashierId || null,
-        cashier_name: receipt.cashierName,
-        customer_name: receipt.customerName || null,
-        customer_phone: receipt.phone || null,
-        table_number: receipt.tableNumber || null,
-        order_type: receipt.orderType,
-        subtotal: receipt.subtotal,
-        discount: receipt.discount,
-        tax: receipt.tax,
-        total: receipt.total,
+        receipt_number: verifiedReceipt.receiptNumber,
+        cashier_id: verifiedReceipt.cashierId,
+        cashier_name: verifiedReceipt.cashierName,
+        customer_name: verifiedReceipt.customerName || null,
+        customer_phone: verifiedReceipt.phone || null,
+        table_number: verifiedReceipt.tableNumber || null,
+        order_type: verifiedReceipt.orderType,
+        subtotal: verifiedReceipt.subtotal,
+        discount: verifiedReceipt.discount,
+        tax: verifiedReceipt.tax,
+        total: verifiedReceipt.total,
         status: "paid",
       })
       .select("id")
@@ -268,7 +287,7 @@ export async function createPosReceipt(receipt: PosReceipt) {
 
     if (orderError) throw orderError;
 
-    const orderItems = receipt.items.map((item) => ({
+    const orderItems = verifiedReceipt.items.map((item) => ({
       pos_order_id: order.id,
       food_id: item.food.id,
       food_name: item.food.name,
@@ -281,23 +300,23 @@ export async function createPosReceipt(receipt: PosReceipt) {
 
     const { error: paymentError } = await supabase.from("pos_payments").insert({
       pos_order_id: order.id,
-      method: receipt.payment.method,
-      amount_paid: receipt.payment.amountPaid,
-      change_amount: receipt.payment.change,
-      split_details: receipt.payment.split || null,
+      method: verifiedReceipt.payment.method,
+      amount_paid: verifiedReceipt.payment.amountPaid,
+      change_amount: verifiedReceipt.payment.change,
+      split_details: verifiedReceipt.payment.split || null,
     });
     if (paymentError) throw paymentError;
 
     await supabase.from("pos_receipts").insert({
       pos_order_id: order.id,
-      receipt_number: receipt.receiptNumber,
-      receipt_payload: receipt,
+      receipt_number: verifiedReceipt.receiptNumber,
+      receipt_payload: verifiedReceipt,
       printed_at: new Date().toISOString(),
     });
     synced = true;
   }
 
-  const finalReceipt = { ...receipt, synced };
+  const finalReceipt = { ...verifiedReceipt, synced };
   saveLocalReceipts([finalReceipt, ...getLocalReceipts().filter((item) => item.id !== finalReceipt.id)]);
   localStorage.setItem(lastReceiptKey, finalReceipt.id);
   return finalReceipt;
