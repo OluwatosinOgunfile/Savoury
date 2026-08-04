@@ -91,6 +91,7 @@ drop policy if exists "admins and active sales reps manage pos receipts" on publ
 drop policy if exists "admins and active sales reps manage held orders" on public.pos_held_orders;
 drop policy if exists "admins and active sales reps manage cash drawer" on public.cash_drawer;
 drop policy if exists "admins and active sales reps create transaction logs" on public.pos_transaction_logs;
+drop policy if exists "admins read pos transaction logs" on public.pos_transaction_logs;
 
 create policy "admins and active sales reps manage pos orders" on public.pos_orders
 for all using (public.is_admin() or public.is_active_sales_rep())
@@ -118,3 +119,6 @@ with check (public.is_admin() or public.is_active_sales_rep());
 
 create policy "admins and active sales reps create transaction logs" on public.pos_transaction_logs
 for insert with check (public.is_admin() or public.is_active_sales_rep());
+
+create policy "admins read pos transaction logs" on public.pos_transaction_logs
+for select using (public.is_admin());

@@ -125,6 +125,7 @@ drop policy if exists "admins and sales reps manage held orders" on public.pos_h
 drop policy if exists "admins manage pos refunds" on public.pos_refunds;
 drop policy if exists "admins and sales reps manage cash drawer" on public.cash_drawer;
 drop policy if exists "admins and sales reps create transaction logs" on public.pos_transaction_logs;
+drop policy if exists "admins read pos transaction logs" on public.pos_transaction_logs;
 
 create policy "admins manage sales representatives" on public.sales_representatives for all using (public.is_admin()) with check (public.is_admin());
 create policy "sales reps read own profile" on public.sales_representatives for select using (auth.uid() = auth_user_id);
@@ -136,3 +137,4 @@ create policy "admins and sales reps manage held orders" on public.pos_held_orde
 create policy "admins manage pos refunds" on public.pos_refunds for all using (public.is_admin()) with check (public.is_admin());
 create policy "admins and sales reps manage cash drawer" on public.cash_drawer for all using (public.is_admin() or exists (select 1 from public.users where id = auth.uid() and role::text = 'sales_rep')) with check (public.is_admin() or exists (select 1 from public.users where id = auth.uid() and role::text = 'sales_rep'));
 create policy "admins and sales reps create transaction logs" on public.pos_transaction_logs for insert with check (public.is_admin() or exists (select 1 from public.users where id = auth.uid() and role::text = 'sales_rep'));
+create policy "admins read pos transaction logs" on public.pos_transaction_logs for select using (public.is_admin());

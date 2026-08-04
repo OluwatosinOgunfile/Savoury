@@ -189,7 +189,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       };
     }
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    const authClient = supabase;
+    const { data: listener } = authClient.auth.onAuthStateChange((event, nextSession) => {
       const revision = ++authRevision.current;
       setLoading(true);
       setSession(nextSession);
@@ -199,6 +200,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       window.setTimeout(async () => {
         const nextProfile = await resolveProfile(nextSession?.user || null);
         if (revision !== authRevision.current) return;
+        if (event === "SIGNED_IN" && nextProfile?.role === "sales_rep") {
+          await authClient.functions.invoke("manage-sales-rep", { body: { action: "record_login" } });
+        }
         setProfile(nextProfile);
         setLoading(false);
       }, 0);

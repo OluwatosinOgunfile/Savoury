@@ -307,12 +307,27 @@ export async function createPosReceipt(receipt: PosReceipt) {
     });
     if (paymentError) throw paymentError;
 
-    await supabase.from("pos_receipts").insert({
+    const { error: receiptError } = await supabase.from("pos_receipts").insert({
       pos_order_id: order.id,
       receipt_number: verifiedReceipt.receiptNumber,
       receipt_payload: verifiedReceipt,
       printed_at: new Date().toISOString(),
     });
+    if (receiptError) throw receiptError;
+
+    const { error: logError } = await supabase.from("pos_transaction_logs").insert({
+      actor_id: authData.user.id,
+      action: "completed_sale",
+      entity_type: "pos_order",
+      entity_id: order.id,
+      metadata: {
+        receipt_number: verifiedReceipt.receiptNumber,
+        total: verifiedReceipt.total,
+        payment_method: verifiedReceipt.payment.method,
+        item_count: verifiedReceipt.items.reduce((sum, item) => sum + item.quantity, 0),
+      },
+    });
+    if (logError) console.warn("The sale completed, but its activity event could not be recorded.", logError);
     synced = true;
   }
 

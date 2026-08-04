@@ -338,12 +338,12 @@ export function AdminDashboard() {
                 </thead>
                 <tbody>
                   {salesReps.map((rep) => (
-                    <tr key={rep.id} className="border-t border-zinc-100 dark:border-white/10">
-                      <td className="py-4 font-black">{rep.fullName}<p className="text-xs text-zinc-500">{rep.staffId}</p></td>
+                    <tr key={rep.id} className="cursor-pointer border-t border-zinc-100 transition hover:bg-zinc-50 dark:border-white/10 dark:hover:bg-white/5" onClick={() => navigate(`/admin/sales-representatives/${rep.id}`)}>
+                      <td className="py-4 font-black"><Link className="transition hover:text-savoury-primary hover:underline" to={`/admin/sales-representatives/${rep.id}`}>{rep.fullName}</Link><p className="text-xs text-zinc-500">{rep.staffId}</p></td>
                       <td>{rep.email}</td>
                       <td><span className={`rounded-full px-3 py-1 text-xs font-black capitalize ${rep.status === "active" ? "bg-savoury-accent text-savoury-primary dark:bg-savoury-primary/10" : "bg-red-500/10 text-red-500"}`}>{rep.status}</span></td>
                       <td className="capitalize">{rep.permissions.join(", ") || "POS only"}</td>
-                      <td className="flex gap-2 py-3">
+                      <td className="flex gap-2 py-3" onClick={(event) => event.stopPropagation()}>
                         <Button size="sm" variant="outline" onClick={() => toggleRep(rep)}>{rep.status === "active" ? "Suspend" : "Activate"}</Button>
                         <Button size="sm" variant="outline" onClick={() => resetRepPassword(rep)}>Reset Password</Button>
                       </td>

@@ -1,5 +1,6 @@
 import { coupons as fallbackCoupons, reviews as fallbackReviews } from "@/data/catalog";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
+import { formatCurrency } from "@/lib/utils";
 import { fetchCoupons } from "@/services/foodService";
 import { fetchSalesRepresentatives, saveSalesRepresentative, type SalesRepresentative } from "@/services/posService";
 import type { Coupon, Review } from "@/types";
@@ -39,6 +40,26 @@ export interface AdminReview {
   rating: number;
   comment: string;
   createdAt: string;
+}
+
+export interface AdminPosSale {
+  id: string;
+  receiptNumber: string;
+  customerName?: string;
+  orderType: string;
+  paymentMethod: string;
+  status: string;
+  total: number;
+  createdAt: string;
+}
+
+export interface AdminSalesRepActivity {
+  representative: SalesRepresentative;
+  sales: AdminPosSale[];
+  events: Array<{ id: string; action: string; details?: string; createdAt: string }>;
+  totalRevenue: number;
+  todayRevenue: number;
+  averageSale: number;
 }
 
 export const adminDashboardKeys = {
@@ -185,4 +206,86 @@ export async function suspendAdminSalesRepresentative(rep: SalesRepresentative) 
 
 export async function activateAdminSalesRepresentative(rep: SalesRepresentative) {
   return saveSalesRepresentative({ ...rep, status: "active" });
+}
+
+export async function fetchAdminSalesRepresentativeActivity(repId: string): Promise<AdminSalesRepActivity | null> {
+  if (!isSupabaseConfigured || !supabase) {
+    const representative = (await fetchSalesRepresentatives()).find((rep) => rep.id === repId);
+    return representative ? { representative, sales: [], events: [], totalRevenue: 0, todayRevenue: 0, averageSale: 0 } : null;
+  }
+
+  const { data: rep, error: repError } = await supabase
+    .from("sales_representatives")
+    .select("id, auth_user_id, full_name, email, phone, staff_id, status, permissions, must_change_password, created_at, last_login_at")
+    .eq("id", repId)
+    .maybeSingle();
+  if (repError) throw repError;
+  if (!rep) return null;
+
+  const [ordersResult, logsResult] = await Promise.all([
+    supabase
+      .from("pos_orders")
+      .select("id, receipt_number, customer_name, order_type, status, total, created_at, pos_payments(method)")
+      .eq("cashier_id", rep.auth_user_id)
+      .order("created_at", { ascending: false })
+      .limit(100),
+    supabase
+      .from("pos_transaction_logs")
+      .select("id, action, metadata, created_at")
+      .eq("actor_id", rep.auth_user_id)
+      .order("created_at", { ascending: false })
+      .limit(100),
+  ]);
+  if (ordersResult.error) throw ordersResult.error;
+  if (logsResult.error) throw logsResult.error;
+
+  const representative: SalesRepresentative = {
+    id: rep.id,
+    fullName: rep.full_name,
+    email: rep.email,
+    phone: rep.phone || undefined,
+    staffId: rep.staff_id,
+    status: rep.status,
+    permissions: rep.permissions || [],
+    mustChangePassword: rep.must_change_password === true,
+    createdAt: rep.created_at,
+    lastLoginAt: rep.last_login_at || undefined,
+  };
+
+  const sales: AdminPosSale[] = (ordersResult.data || []).map((order: any) => {
+    const payment = Array.isArray(order.pos_payments) ? order.pos_payments[0] : order.pos_payments;
+    return {
+      id: order.id,
+      receiptNumber: order.receipt_number,
+      customerName: order.customer_name || undefined,
+      orderType: order.order_type,
+      paymentMethod: payment?.method || "unrecorded",
+      status: order.status,
+      total: Number(order.total || 0),
+      createdAt: order.created_at,
+    };
+  });
+
+  const events = (logsResult.data || []).map((event: any) => ({
+    id: event.id,
+    action: event.action,
+    details: event.metadata?.receipt_number
+      ? `${event.metadata.receipt_number} · ${formatCurrency(Number(event.metadata.total || 0))}`
+      : undefined,
+    createdAt: event.created_at,
+  }));
+  const validSales = sales.filter((sale) => sale.status !== "cancelled" && sale.status !== "refunded");
+  const startToday = new Date();
+  startToday.setHours(0, 0, 0, 0);
+  const totalRevenue = validSales.reduce((sum, sale) => sum + sale.total, 0);
+  const todayRevenue = validSales.filter((sale) => new Date(sale.createdAt) >= startToday).reduce((sum, sale) => sum + sale.total, 0);
+
+  return {
+    representative,
+    sales,
+    events,
+    totalRevenue,
+    todayRevenue,
+    averageSale: validSales.length ? totalRevenue / validSales.length : 0,
+  };
 }

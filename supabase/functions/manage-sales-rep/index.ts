@@ -54,6 +54,25 @@ serve(async (req) => {
       return json({ success: true });
     }
 
+    if (action === "record_login") {
+      if (callerRow?.role !== "sales_rep") return json({ error: "Only Sales Representatives can record POS login activity." }, 403);
+      const loggedInAt = new Date().toISOString();
+      const { error: loginError } = await adminClient
+        .from("sales_representatives")
+        .update({ last_login_at: loggedInAt, updated_at: loggedInAt })
+        .eq("auth_user_id", caller.user.id)
+        .eq("status", "active");
+      if (loginError) return json({ error: loginError.message }, 400);
+      const { error: logError } = await adminClient.from("pos_transaction_logs").insert({
+        actor_id: caller.user.id,
+        action: "signed_in",
+        entity_type: "sales_representative",
+        metadata: { source: "pos_login" },
+      });
+      if (logError) return json({ error: logError.message }, 400);
+      return json({ success: true, loggedInAt });
+    }
+
     if (callerRow?.role !== "admin") return json({ error: "Only admins can manage sales representatives." }, 403);
 
     const email = String(body.email || "").trim().toLowerCase();
