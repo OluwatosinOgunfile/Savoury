@@ -17,6 +17,7 @@ import { MenuPage } from "@/pages/MenuPage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
 import { PrivacyPage } from "@/pages/PrivacyPage";
 import { RequireSalesRep } from "@/components/RequireSalesRep";
+import { RequireCustomer } from "@/components/RequireCustomer";
 import { SalesRepPosPage } from "@/pages/SalesRepPosPage";
 import { SignupPage } from "@/pages/SignupPage";
 import { TermsPage } from "@/pages/TermsPage";
@@ -36,10 +37,10 @@ export function App() {
         <Route index element={<HomePage />} />
         <Route path="menu" element={<MenuPage />} />
         <Route path="food/:slug" element={<FoodDetailsPage />} />
-        <Route path="cart" element={<CartPage />} />
-        <Route path="checkout" element={<CheckoutPage />} />
-        <Route path="track/:orderId" element={<TrackingPage />} />
-        <Route path="account" element={<AccountPage />} />
+        <Route path="cart" element={<RequireCustomer allowGuest><CartPage /></RequireCustomer>} />
+        <Route path="checkout" element={<RequireCustomer><CheckoutPage /></RequireCustomer>} />
+        <Route path="track/:orderId" element={<RequireCustomer><TrackingPage /></RequireCustomer>} />
+        <Route path="account" element={<RequireCustomer><AccountPage /></RequireCustomer>} />
         <Route path="auth/callback" element={<AuthCallbackPage />} />
         <Route path="login" element={<LoginPage />} />
         <Route path="signup" element={<SignupPage />} />

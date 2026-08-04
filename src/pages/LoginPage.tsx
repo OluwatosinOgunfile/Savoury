@@ -34,7 +34,7 @@ export function LoginPage() {
     setLoading(true);
     try {
       const signedInUser = await signInWithEmail(form);
-      const nextPath = await getPostLoginPath("id" in signedInUser ? signedInUser.id : undefined, form.email, from);
+      const nextPath = await getPostLoginPath("id" in signedInUser ? signedInUser.id : undefined, from);
       navigate(nextPath, { replace: true });
     } catch (authError) {
       const authMessage = authError instanceof Error ? authError.message : "Login failed. Please try again.";
@@ -50,8 +50,12 @@ export function LoginPage() {
       setError("Enter your email address first.");
       return;
     }
-    await sendPasswordReset(form.email);
-    setMessage(isSupabaseConfigured ? "Password reset email sent." : "Password reset is ready once Supabase is configured.");
+    try {
+      await sendPasswordReset(form.email);
+      setMessage("Password reset email sent.");
+    } catch (authError) {
+      setError(authError instanceof Error ? authError.message : "Password reset failed. Please try again.");
+    }
   };
 
   const continueWithGoogle = async () => {

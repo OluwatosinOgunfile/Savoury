@@ -1,4 +1,4 @@
-create type public.user_role as enum ('customer', 'admin');
+create type public.user_role as enum ('customer', 'admin', 'sales_rep');
 create type public.order_status as enum ('received', 'preparing', 'cooking', 'ready', 'out_for_delivery', 'delivered', 'rejected');
 create type public.payment_method as enum ('cash', 'card', 'transfer', 'paystack', 'flutterwave', 'stripe');
 

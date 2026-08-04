@@ -11,8 +11,6 @@ export interface SalesRepresentative {
   email: string;
   phone?: string;
   staffId: string;
-  branch: string;
-  shift: string;
   status: "active" | "suspended";
   permissions: SalesRepPermission[];
   createdAt: string;
@@ -59,7 +57,7 @@ export interface HeldPosOrder {
   createdAt: string;
 }
 
-export interface PosShiftSummary {
+export interface PosSalesSummary {
   salesToday: number;
   revenueToday: number;
   weeklySales: number;
@@ -111,8 +109,6 @@ export function getSalesRepresentatives(): SalesRepresentative[] {
       fullName: "Counter Sales Rep",
       email: "sales@savoury.local",
       staffId: "SV-POS-001",
-      branch: "Ile-Ife Main Branch",
-      shift: "Morning Shift",
       status: "active",
       permissions: ["discounts", "reports"],
       createdAt: new Date().toISOString(),
@@ -124,7 +120,7 @@ export async function fetchSalesRepresentatives(): Promise<SalesRepresentative[]
   if (!isSupabaseConfigured || !supabase) return getSalesRepresentatives();
   const { data, error } = await supabase
     .from("sales_representatives")
-    .select("id, full_name, email, phone, staff_id, branch, shift, status, permissions, created_at, last_login_at")
+    .select("id, full_name, email, phone, staff_id, status, permissions, created_at, last_login_at")
     .order("created_at", { ascending: false });
   if (error) {
     console.warn("Could not load sales representatives. Run supabase/pos-sales-rep-patch.sql once.", error);
@@ -136,8 +132,6 @@ export async function fetchSalesRepresentatives(): Promise<SalesRepresentative[]
     email: rep.email,
     phone: rep.phone || undefined,
     staffId: rep.staff_id,
-    branch: rep.branch,
-    shift: rep.shift,
     status: rep.status,
     permissions: rep.permissions || [],
     createdAt: rep.created_at,
@@ -152,8 +146,6 @@ export async function saveSalesRepresentative(rep: Omit<SalesRepresentative, "id
     fullName: rep.fullName,
     email: rep.email.trim().toLowerCase(),
     phone: rep.phone,
-    branch: rep.branch,
-    shift: rep.shift,
     status: rep.status,
     permissions: rep.permissions,
     createdAt: new Date().toISOString(),
@@ -166,8 +158,6 @@ export async function saveSalesRepresentative(rep: Omit<SalesRepresentative, "id
         fullName: next.fullName,
         email: next.email,
         phone: next.phone,
-        branch: next.branch,
-        shift: next.shift,
         status: next.status,
         permissions: next.permissions,
       },
@@ -193,14 +183,12 @@ export async function saveSalesRepresentative(rep: Omit<SalesRepresentative, "id
           email: next.email,
           phone: next.phone || null,
           staff_id: next.staffId,
-          branch: next.branch,
-          shift: next.shift,
           status: next.status,
           permissions: next.permissions,
         },
         { onConflict: "email" }
       )
-      .select("id, full_name, email, phone, staff_id, branch, shift, status, permissions, created_at, last_login_at")
+      .select("id, full_name, email, phone, staff_id, status, permissions, created_at, last_login_at")
       .single();
 
     if (!error && data) {
@@ -210,8 +198,6 @@ export async function saveSalesRepresentative(rep: Omit<SalesRepresentative, "id
         email: data.email,
         phone: data.phone || undefined,
         staffId: data.staff_id,
-        branch: data.branch,
-        shift: data.shift,
         status: data.status,
         permissions: data.permissions || [],
         createdAt: data.created_at,
@@ -245,7 +231,7 @@ export function receiptNumber() {
   return `SVR-${stamp}-${String(Date.now()).slice(-5)}`;
 }
 
-export function calculatePosSummary(receipts = getLocalReceipts()): PosShiftSummary {
+export function calculatePosSummary(receipts = getLocalReceipts()): PosSalesSummary {
   const now = new Date();
   const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
   const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;

@@ -1,5 +1,6 @@
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { appEnv } from "@/lib/env";
+import { isUserRole, postLoginPath } from "@/lib/roleAccess";
 
 export interface AuthCredentials {
   email: string;
@@ -17,7 +18,11 @@ function callbackUrl() {
 
 export async function signInWithEmail({ email, password }: AuthCredentials) {
   if (!isSupabaseConfigured || !supabase) {
+    if (!appEnv.demoAuthEnabled) {
+      throw new Error("Authentication is not configured. Add VITE_SUPABASE_ANON_KEY to .env.local and restart the app.");
+    }
     localStorage.setItem("savoury-demo-user", JSON.stringify({ email, fullName: "Demo Customer" }));
+    window.dispatchEvent(new Event("savoury-auth-changed"));
     return { email };
   }
 
@@ -26,35 +31,40 @@ export async function signInWithEmail({ email, password }: AuthCredentials) {
   return data.user;
 }
 
-export async function getPostLoginPath(userId: string | undefined, email: string, fallbackPath: string) {
-  try {
-    const stored = JSON.parse(localStorage.getItem("savoury-demo-user") || "{}") as { role?: string };
-    if (stored.role === "sales_rep") return "/pos";
-    if (stored.role === "admin") return "/admin";
-  } catch {
-    // Continue to Supabase role lookup.
+export async function getPostLoginPath(userId: string | undefined, fallbackPath: string) {
+  if (appEnv.demoAuthEnabled && !isSupabaseConfigured) {
+    try {
+      const stored = JSON.parse(localStorage.getItem("savoury-demo-user") || "{}") as { role?: string };
+      if (isUserRole(stored.role)) return postLoginPath(stored.role, fallbackPath);
+    } catch {
+      return "/account";
+    }
   }
 
   if (!isSupabaseConfigured || !supabase) {
-    return fallbackPath;
+    return postLoginPath("customer", fallbackPath);
   }
 
-  if (!userId) return fallbackPath;
+  if (!userId) return "/account";
 
-  const { data: appUser } = await supabase
+  const { data: appUser, error } = await supabase
     .from("users")
     .select("role")
     .eq("id", userId)
     .maybeSingle();
 
-  if (appUser?.role === "admin") return "/admin";
-  if (appUser?.role === "sales_rep") return "/pos";
-  return fallbackPath;
+  if (error) throw new Error("Your account role could not be verified. Please try signing in again.");
+  const role = isUserRole(appUser?.role) ? appUser.role : "customer";
+  return postLoginPath(role, fallbackPath);
 }
 
 export async function signUpWithEmail({ email, password, fullName, phone }: AuthCredentials) {
   if (!isSupabaseConfigured || !supabase) {
+    if (!appEnv.demoAuthEnabled) {
+      throw new Error("Authentication is not configured. Add VITE_SUPABASE_ANON_KEY to .env.local and restart the app.");
+    }
     localStorage.setItem("savoury-demo-user", JSON.stringify({ email, fullName, phone }));
+    window.dispatchEvent(new Event("savoury-auth-changed"));
     return { email, fullName, phone };
   }
 
@@ -75,7 +85,11 @@ export async function signUpWithEmail({ email, password, fullName, phone }: Auth
 
 export async function signInWithGoogle() {
   if (!isSupabaseConfigured || !supabase) {
+    if (!appEnv.demoAuthEnabled) {
+      throw new Error("Google authentication is not configured. Add VITE_SUPABASE_ANON_KEY to .env.local and restart the app.");
+    }
     localStorage.setItem("savoury-demo-user", JSON.stringify({ email: "google.user@savoury.local", fullName: "Google Demo User" }));
+    window.dispatchEvent(new Event("savoury-auth-changed"));
     return;
   }
 
@@ -93,7 +107,9 @@ export async function signInWithGoogle() {
 }
 
 export async function sendPasswordReset(email: string) {
-  if (!isSupabaseConfigured || !supabase) return;
+  if (!isSupabaseConfigured || !supabase) {
+    throw new Error("Authentication is not configured. Add VITE_SUPABASE_ANON_KEY to .env.local and restart the app.");
+  }
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
     redirectTo: `${authRedirectUrl}/account`,
   });

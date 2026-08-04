@@ -48,8 +48,6 @@ serve(async (req) => {
     const email = String(body.email || "").trim().toLowerCase();
     const fullName = String(body.fullName || body.full_name || "").trim();
     const phone = String(body.phone || "").trim();
-    const branch = String(body.branch || "Ile-Ife Main Branch").trim();
-    const shift = String(body.shift || "Morning Shift").trim();
     const permissions = Array.isArray(body.permissions) ? body.permissions : ["discounts", "reports"];
     const status = String(body.status || "active");
 
@@ -93,8 +91,6 @@ serve(async (req) => {
           full_name: fullName,
           email,
           phone: phone || null,
-          branch,
-          shift,
           status,
           permissions,
           created_by: caller.user.id,
@@ -102,7 +98,7 @@ serve(async (req) => {
         },
         { onConflict: "email" },
       )
-      .select("id, full_name, email, phone, staff_id, branch, shift, status, permissions, created_at, last_login_at")
+      .select("id, full_name, email, phone, staff_id, status, permissions, created_at, last_login_at")
       .single();
 
     if (repError) return json({ error: repError.message }, 400);
@@ -113,8 +109,6 @@ serve(async (req) => {
         email: rep.email,
         phone: rep.phone,
         staffId: rep.staff_id,
-        branch: rep.branch,
-        shift: rep.shift,
         status: rep.status,
         permissions: rep.permissions || [],
         createdAt: rep.created_at,

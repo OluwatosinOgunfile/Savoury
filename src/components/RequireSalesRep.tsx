@@ -23,14 +23,18 @@ export function RequireSalesRep({ children }: { children: ReactNode }) {
 
   if (!isAuthenticated) return <Navigate to="/login" state={{ from: location }} replace />;
 
-  if (profile?.role !== "sales_rep") {
+  if (profile?.role !== "sales_rep" || profile.accountStatus !== "active") {
     return (
       <main className="app-container grid min-h-[60vh] place-items-center py-10">
         <Card className="max-w-lg">
           <CardContent className="text-center">
             <BadgeDollarSign className="mx-auto h-12 w-12 text-savoury-primary" />
-            <h1 className="mt-4 text-2xl font-black">Sales representative access only</h1>
-            <p className="mt-2 text-sm font-semibold text-zinc-500">Sign in with a POS staff account to use the counter sales dashboard.</p>
+            <h1 className="mt-4 text-2xl font-black">{profile?.role === "sales_rep" ? "POS account unavailable" : "Sales representative access only"}</h1>
+            <p className="mt-2 text-sm font-semibold text-zinc-500">
+              {profile?.role === "sales_rep"
+                ? "This POS account is suspended or has not been fully provisioned. Contact an administrator."
+                : "Sign in with an active POS staff account to use the counter sales dashboard."}
+            </p>
           </CardContent>
         </Card>
       </main>

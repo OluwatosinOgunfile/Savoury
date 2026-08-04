@@ -12,8 +12,6 @@ create table if not exists public.sales_representatives (
   email text unique not null,
   phone text,
   staff_id text unique not null default ('SV-POS-' || upper(substr(gen_random_uuid()::text, 1, 6))),
-  branch text not null default 'Ile-Ife Main Branch',
-  shift text not null default 'Morning Shift',
   status text not null default 'active' check (status in ('active', 'suspended')),
   permissions text[] not null default array['discounts']::text[],
   last_login_at timestamptz,
@@ -87,20 +85,9 @@ create table if not exists public.pos_refunds (
   created_at timestamptz not null default now()
 );
 
-create table if not exists public.pos_shifts (
-  id uuid primary key default gen_random_uuid(),
-  sales_rep_id uuid references public.sales_representatives(id) on delete set null,
-  opened_by uuid references public.users(id) on delete set null,
-  branch text not null,
-  opening_cash numeric not null default 0,
-  closing_cash numeric,
-  opened_at timestamptz not null default now(),
-  closed_at timestamptz
-);
-
 create table if not exists public.cash_drawer (
   id uuid primary key default gen_random_uuid(),
-  shift_id uuid references public.pos_shifts(id) on delete set null,
+  actor_id uuid references public.users(id) on delete set null,
   movement_type text not null check (movement_type in ('open', 'sale', 'refund', 'cash_in', 'cash_out', 'close')),
   amount numeric not null default 0,
   note text,
@@ -124,7 +111,6 @@ alter table public.pos_payments enable row level security;
 alter table public.pos_receipts enable row level security;
 alter table public.pos_held_orders enable row level security;
 alter table public.pos_refunds enable row level security;
-alter table public.pos_shifts enable row level security;
 alter table public.cash_drawer enable row level security;
 alter table public.pos_transaction_logs enable row level security;
 
@@ -136,18 +122,16 @@ drop policy if exists "admins and sales reps manage pos payments" on public.pos_
 drop policy if exists "admins and sales reps manage pos receipts" on public.pos_receipts;
 drop policy if exists "admins and sales reps manage held orders" on public.pos_held_orders;
 drop policy if exists "admins manage pos refunds" on public.pos_refunds;
-drop policy if exists "admins and sales reps manage shifts" on public.pos_shifts;
 drop policy if exists "admins and sales reps manage cash drawer" on public.cash_drawer;
 drop policy if exists "admins and sales reps create transaction logs" on public.pos_transaction_logs;
 
 create policy "admins manage sales representatives" on public.sales_representatives for all using (public.is_admin()) with check (public.is_admin());
 create policy "sales reps read own profile" on public.sales_representatives for select using (auth.uid() = auth_user_id);
-create policy "admins and sales reps manage pos orders" on public.pos_orders for all using (public.is_admin() or exists (select 1 from public.users where id = auth.uid() and role = 'sales_rep')) with check (public.is_admin() or exists (select 1 from public.users where id = auth.uid() and role = 'sales_rep'));
-create policy "admins and sales reps manage pos order items" on public.pos_order_items for all using (public.is_admin() or exists (select 1 from public.users where id = auth.uid() and role = 'sales_rep')) with check (public.is_admin() or exists (select 1 from public.users where id = auth.uid() and role = 'sales_rep'));
-create policy "admins and sales reps manage pos payments" on public.pos_payments for all using (public.is_admin() or exists (select 1 from public.users where id = auth.uid() and role = 'sales_rep')) with check (public.is_admin() or exists (select 1 from public.users where id = auth.uid() and role = 'sales_rep'));
-create policy "admins and sales reps manage pos receipts" on public.pos_receipts for all using (public.is_admin() or exists (select 1 from public.users where id = auth.uid() and role = 'sales_rep')) with check (public.is_admin() or exists (select 1 from public.users where id = auth.uid() and role = 'sales_rep'));
+create policy "admins and sales reps manage pos orders" on public.pos_orders for all using (public.is_admin() or exists (select 1 from public.users where id = auth.uid() and role::text = 'sales_rep')) with check (public.is_admin() or exists (select 1 from public.users where id = auth.uid() and role::text = 'sales_rep'));
+create policy "admins and sales reps manage pos order items" on public.pos_order_items for all using (public.is_admin() or exists (select 1 from public.users where id = auth.uid() and role::text = 'sales_rep')) with check (public.is_admin() or exists (select 1 from public.users where id = auth.uid() and role::text = 'sales_rep'));
+create policy "admins and sales reps manage pos payments" on public.pos_payments for all using (public.is_admin() or exists (select 1 from public.users where id = auth.uid() and role::text = 'sales_rep')) with check (public.is_admin() or exists (select 1 from public.users where id = auth.uid() and role::text = 'sales_rep'));
+create policy "admins and sales reps manage pos receipts" on public.pos_receipts for all using (public.is_admin() or exists (select 1 from public.users where id = auth.uid() and role::text = 'sales_rep')) with check (public.is_admin() or exists (select 1 from public.users where id = auth.uid() and role::text = 'sales_rep'));
 create policy "admins and sales reps manage held orders" on public.pos_held_orders for all using (public.is_admin() or cashier_id = auth.uid()) with check (public.is_admin() or cashier_id = auth.uid());
 create policy "admins manage pos refunds" on public.pos_refunds for all using (public.is_admin()) with check (public.is_admin());
-create policy "admins and sales reps manage shifts" on public.pos_shifts for all using (public.is_admin() or opened_by = auth.uid()) with check (public.is_admin() or opened_by = auth.uid());
-create policy "admins and sales reps manage cash drawer" on public.cash_drawer for all using (public.is_admin() or exists (select 1 from public.users where id = auth.uid() and role = 'sales_rep')) with check (public.is_admin() or exists (select 1 from public.users where id = auth.uid() and role = 'sales_rep'));
-create policy "admins and sales reps create transaction logs" on public.pos_transaction_logs for insert with check (public.is_admin() or exists (select 1 from public.users where id = auth.uid() and role = 'sales_rep'));
+create policy "admins and sales reps manage cash drawer" on public.cash_drawer for all using (public.is_admin() or exists (select 1 from public.users where id = auth.uid() and role::text = 'sales_rep')) with check (public.is_admin() or exists (select 1 from public.users where id = auth.uid() and role::text = 'sales_rep'));
+create policy "admins and sales reps create transaction logs" on public.pos_transaction_logs for insert with check (public.is_admin() or exists (select 1 from public.users where id = auth.uid() and role::text = 'sales_rep'));

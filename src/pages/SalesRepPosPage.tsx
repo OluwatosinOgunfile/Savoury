@@ -220,9 +220,8 @@ export function SalesRepPosPage() {
             </p>
           </div>
           <div className="grid grid-cols-2 gap-2 md:flex">
-            <ShiftMetric label="Shift" value="Active" />
-            <ShiftMetric label="Sales Today" value={summary.salesToday.toString()} />
-            <ShiftMetric label="Revenue" value={formatCurrency(summary.revenueToday)} />
+            <PosMetric label="Sales Today" value={summary.salesToday.toString()} />
+            <PosMetric label="Revenue" value={formatCurrency(summary.revenueToday)} />
             <button className={`rounded-xl px-4 py-3 text-left text-xs font-black ${online ? "bg-emerald-500/10 text-emerald-600" : "bg-red-500/10 text-red-500"}`}>
               {online ? "Online" : "Offline Mode"}
             </button>
@@ -302,7 +301,7 @@ export function SalesRepPosPage() {
             </>
           )}
           {activeTab === "orders" && <OrdersPanel heldOrders={heldOrders} onResume={resumeOrder} onRemove={(id) => { removeHeldOrder(id); setHeldOrders(getHeldOrders()); }} />}
-          {activeTab === "receipts" && <ReceiptsPanel receipts={receipts} onOpen={setReceiptOpen} onRefund={(receipt) => { refundLocalReceipt(receipt.id); setReceipts(getLocalReceipts()); setToast("Receipt refunded locally."); }} />}
+          {activeTab === "receipts" && <ReceiptsPanel canRefund={profile?.permissions.includes("refunds") === true} receipts={receipts} onOpen={setReceiptOpen} onRefund={(receipt) => { refundLocalReceipt(receipt.id); setReceipts(getLocalReceipts()); setToast("Receipt refunded locally."); }} />}
           {activeTab === "reports" && <ReportsPanel summary={summary} />}
           {activeTab === "profile" && <ProfilePanel profile={profile} />}
         </section>
@@ -374,7 +373,7 @@ export function SalesRepPosPage() {
   );
 }
 
-function ShiftMetric({ label, value }: { label: string; value: string }) {
+function PosMetric({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-xl border border-zinc-100 bg-zinc-50 px-4 py-3 dark:border-white/10 dark:bg-white/5">
       <p className="text-[11px] font-black uppercase text-zinc-400">{label}</p>
@@ -459,9 +458,9 @@ function PaymentModal({ total, onClose, onComplete }: { total: number; onClose: 
             <Input type="number" min={0} placeholder="Amount received" value={amountPaid || ""} onChange={(event) => setAmountPaid(Number(event.target.value || 0))} />
           )}
           <div className="grid grid-cols-3 gap-3">
-            <ShiftMetric label="Total" value={formatCurrency(total)} />
-            <ShiftMetric label="Paid" value={formatCurrency(paid)} />
-            <ShiftMetric label="Change" value={formatCurrency(change)} />
+            <PosMetric label="Total" value={formatCurrency(total)} />
+            <PosMetric label="Paid" value={formatCurrency(paid)} />
+            <PosMetric label="Change" value={formatCurrency(change)} />
           </div>
           <Button className="w-full" size="lg" disabled={!canPay} onClick={() => onComplete({ method, amountPaid: paid, change, split: method === "split" ? (["cash", "card", "transfer"] as PaymentMethod[]).filter((item) => split[item] > 0).map((item) => ({ method: item, amount: split[item] })) : undefined })}>
             Complete Payment
@@ -568,7 +567,7 @@ function OrdersPanel({ heldOrders, onResume, onRemove }: { heldOrders: HeldPosOr
   );
 }
 
-function ReceiptsPanel({ receipts, onOpen, onRefund }: { receipts: PosReceipt[]; onOpen: (receipt: PosReceipt) => void; onRefund: (receipt: PosReceipt) => void }) {
+function ReceiptsPanel({ receipts, canRefund, onOpen, onRefund }: { receipts: PosReceipt[]; canRefund: boolean; onOpen: (receipt: PosReceipt) => void; onRefund: (receipt: PosReceipt) => void }) {
   const [search, setSearch] = useState("");
   const filtered = receipts.filter((receipt) => [receipt.receiptNumber, receipt.customerName || "", receipt.cashierName].join(" ").toLowerCase().includes(search.toLowerCase()));
   return (
@@ -583,7 +582,7 @@ function ReceiptsPanel({ receipts, onOpen, onRefund }: { receipts: PosReceipt[];
             </div>
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => onOpen(receipt)}><Printer className="h-4 w-4" /> Reprint</Button>
-              <Button variant="outline" onClick={() => onRefund(receipt)} disabled={receipt.refunded}><RotateCcw className="h-4 w-4" /> Refund</Button>
+              {canRefund && <Button variant="outline" onClick={() => onRefund(receipt)} disabled={receipt.refunded}><RotateCcw className="h-4 w-4" /> Refund</Button>}
             </div>
           </div>
         ))}
@@ -615,7 +614,7 @@ function ProfilePanel({ profile }: { profile: ReturnType<typeof useAuth>["profil
     <Panel title="Sales Profile" subtitle="Profile tools for sales representatives.">
       <div className="grid gap-4 md:grid-cols-2">
         <Card><CardContent><UserRound className="h-8 w-8 text-savoury-primary" /><h3 className="mt-3 text-xl font-black">{profile?.fullName || "Sales Representative"}</h3><p className="text-sm font-semibold text-zinc-500">{profile?.email}</p></CardContent></Card>
-        <Card><CardContent><ShieldCheck className="h-8 w-8 text-savoury-primary" /><h3 className="mt-3 font-black">Assigned Branch</h3><p className="text-sm font-semibold text-zinc-500">Ile-Ife Main Branch • Active Shift</p></CardContent></Card>
+        <Card><CardContent><ShieldCheck className="h-8 w-8 text-savoury-primary" /><h3 className="mt-3 font-black">POS Access</h3><p className="text-sm font-semibold text-zinc-500">Active sales representative account</p></CardContent></Card>
         <Card className="md:col-span-2"><CardContent><h3 className="font-black">Profile Updates</h3><p className="mt-2 text-sm font-semibold text-zinc-500">Profile picture and password updates use the existing account page and Supabase authentication settings.</p></CardContent></Card>
       </div>
     </Panel>

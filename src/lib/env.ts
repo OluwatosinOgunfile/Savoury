@@ -17,6 +17,7 @@ export const appEnv = {
   supabaseJwksUrl: configuredJwksUrl || deriveJwksUrl(supabaseUrl),
   authRedirectUrl: clean(import.meta.env.VITE_AUTH_REDIRECT_URL) || window.location.origin,
   isSupabaseConfigured: Boolean(supabaseUrl && supabaseAnonKey),
+  demoAuthEnabled: import.meta.env.DEV && clean(import.meta.env.VITE_ENABLE_DEMO_AUTH).toLowerCase() === "true",
 };
 
 export function warnAboutUnsafeClientSecrets() {

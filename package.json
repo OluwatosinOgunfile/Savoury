@@ -12,6 +12,7 @@
     "images:remote": "node scripts/link-remote-menu-images.mjs",
     "admin:create": "node scripts/create-admin.mjs",
     "pos:create": "node scripts/create-sales-rep.mjs",
+    "auth:verify-pos": "node scripts/verify-role-login.mjs",
     "preview": "vite preview",
     "lint": "eslint ."
   },

@@ -1,7 +1,9 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
+import { appEnv } from "@/lib/env";
 import type { UserRole } from "@/types";
+import { isUserRole } from "@/lib/roleAccess";
 
 export interface AuthProfile {
   id: string;
@@ -10,6 +12,8 @@ export interface AuthProfile {
   phone?: string;
   avatarUrl?: string;
   role: UserRole;
+  accountStatus: "active" | "suspended" | "unprovisioned";
+  permissions: string[];
   loyaltyPoints: number;
 }
 
@@ -28,13 +32,21 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 function demoProfile(): AuthProfile | null {
   const stored = localStorage.getItem("savoury-demo-user");
   if (!stored) return null;
-  const user = JSON.parse(stored) as { email: string; fullName?: string; phone?: string; role?: UserRole };
+  let user: { email: string; fullName?: string; phone?: string; role?: UserRole };
+  try {
+    user = JSON.parse(stored);
+  } catch {
+    localStorage.removeItem("savoury-demo-user");
+    return null;
+  }
   return {
     id: "demo-user",
     email: user.email,
     fullName: user.fullName || "Demo Customer",
     phone: user.phone,
-    role: user.role === "admin" ? "admin" : "customer",
+    role: isUserRole(user.role) ? user.role : "customer",
+    accountStatus: "active",
+    permissions: [],
     loyaltyPoints: 250,
   };
 }
@@ -51,6 +63,8 @@ function profileFromUser(user: User): AuthProfile {
     phone: user.user_metadata.phone,
     avatarUrl: user.user_metadata.avatar_url,
     role: "customer",
+    accountStatus: "active",
+    permissions: [],
     loyaltyPoints: 0,
   };
 }
@@ -60,16 +74,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<AuthProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const authRevision = useRef(0);
 
-  const loadProfile = async (activeUser: User | null) => {
+  const resolveProfile = useCallback(async (activeUser: User | null): Promise<AuthProfile | null> => {
     if (!isSupabaseConfigured || !supabase) {
-      setProfile(demoProfile());
-      return;
+      return appEnv.demoAuthEnabled ? demoProfile() : null;
     }
 
     if (!activeUser) {
-      setProfile(demoProfile());
-      return;
+      return null;
     }
 
     const { data, error } = await supabase
@@ -79,14 +92,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .maybeSingle();
 
     if (error || !data) {
-      setProfile(profileFromUser(activeUser));
-      return;
+      return profileFromUser(activeUser);
     }
 
     const appUser = Array.isArray(data.users) ? data.users[0] : data.users;
-    const baseRole = (appUser?.role || "customer") as UserRole;
+    const baseRole: UserRole = isUserRole(appUser?.role) ? appUser.role : "customer";
+    let accountStatus: AuthProfile["accountStatus"] = "active";
+    let permissions: string[] = [];
 
-    setProfile({
+    if (baseRole === "sales_rep") {
+      const { data: salesRep, error: salesRepError } = await supabase
+        .from("sales_representatives")
+        .select("status, permissions")
+        .eq("auth_user_id", activeUser.id)
+        .maybeSingle();
+
+      accountStatus = salesRepError || !salesRep ? "unprovisioned" : salesRep.status === "active" ? "active" : "suspended";
+      permissions = Array.isArray(salesRep?.permissions) ? salesRep.permissions : [];
+    }
+
+    return {
       id: data.id,
       fullName: data.full_name,
       phone: data.phone || undefined,
@@ -94,11 +119,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loyaltyPoints: data.loyalty_points || 0,
       email: appUser?.email || activeUser.email || "",
       role: baseRole,
-    });
-  };
+      accountStatus,
+      permissions,
+    };
+  }, []);
+
+  const syncSession = useCallback(async (nextSession: Session | null) => {
+    const revision = ++authRevision.current;
+    setLoading(true);
+    setSession(nextSession);
+    setUser(nextSession?.user || null);
+    const nextProfile = await resolveProfile(nextSession?.user || null);
+    if (revision !== authRevision.current) return;
+    setProfile(nextProfile);
+    setLoading(false);
+  }, [resolveProfile]);
 
   const refreshProfile = async () => {
-    await loadProfile(user);
+    const nextProfile = await resolveProfile(user);
+    setProfile(nextProfile);
   };
 
   const signOut = async () => {
@@ -109,6 +148,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSession(null);
     setUser(null);
     setProfile(null);
+    window.dispatchEvent(new Event("savoury-auth-changed"));
   };
 
   useEffect(() => {
@@ -117,38 +157,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const boot = async () => {
       if (!isSupabaseConfigured || !supabase) {
         if (!mounted) return;
-        setProfile(demoProfile());
+        setProfile(appEnv.demoAuthEnabled ? demoProfile() : null);
         setLoading(false);
         return;
       }
 
       const { data } = await supabase.auth.getSession();
-      if (!mounted) return;
-      setSession(data.session);
-      setUser(data.session?.user || null);
-      await loadProfile(data.session?.user || null);
-      if (mounted) setLoading(false);
+      if (mounted) await syncSession(data.session);
     };
 
     boot();
 
     if (!isSupabaseConfigured || !supabase) {
+      const handleDemoAuth = () => {
+        if (!appEnv.demoAuthEnabled) return;
+        setProfile(demoProfile());
+        setLoading(false);
+      };
+      window.addEventListener("savoury-auth-changed", handleDemoAuth);
       return () => {
         mounted = false;
+        window.removeEventListener("savoury-auth-changed", handleDemoAuth);
       };
     }
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      const revision = ++authRevision.current;
+      setLoading(true);
       setSession(nextSession);
       setUser(nextSession?.user || null);
-      loadProfile(nextSession?.user || null);
+      setProfile(null);
+
+      window.setTimeout(async () => {
+        const nextProfile = await resolveProfile(nextSession?.user || null);
+        if (revision !== authRevision.current) return;
+        setProfile(nextProfile);
+        setLoading(false);
+      }, 0);
     });
 
     return () => {
       mounted = false;
       listener.subscription.unsubscribe();
     };
-  }, []);
+  }, [resolveProfile, syncSession]);
 
   const value = useMemo(
     () => ({

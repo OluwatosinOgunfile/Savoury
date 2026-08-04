@@ -35,8 +35,6 @@ const salesEmail = process.env.SAVOURY_POS_EMAIL || env.SAVOURY_POS_EMAIL;
 const salesPassword = process.env.SAVOURY_POS_PASSWORD || env.SAVOURY_POS_PASSWORD;
 const salesName = process.env.SAVOURY_POS_NAME || env.SAVOURY_POS_NAME || "Savoury Sales Representative";
 const salesPhone = process.env.SAVOURY_POS_PHONE || env.SAVOURY_POS_PHONE || "";
-const salesBranch = process.env.SAVOURY_POS_BRANCH || env.SAVOURY_POS_BRANCH || "Ile-Ife Main Branch";
-const salesShift = process.env.SAVOURY_POS_SHIFT || env.SAVOURY_POS_SHIFT || "Morning Shift";
 
 if (!supabaseUrl || !serviceKey) {
   console.error("Missing VITE_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in .env.local.");
@@ -55,6 +53,25 @@ const supabase = createClient(supabaseUrl, serviceKey, {
     persistSession: false,
   },
 });
+
+const { error: roleSchemaError } = await supabase
+  .from("users")
+  .select("id")
+  .eq("role", "sales_rep")
+  .limit(1);
+
+const { error: posSchemaError } = await supabase
+  .from("sales_representatives")
+  .select("id")
+  .limit(1);
+
+if (roleSchemaError || posSchemaError) {
+  console.error("The Sales Representative database schema is not ready.");
+  console.error("Run supabase/pos-sales-rep-patch.sql in the Supabase SQL Editor, then run this command again.");
+  if (roleSchemaError) console.error(`Role check: ${roleSchemaError.message}`);
+  if (posSchemaError) console.error(`POS table check: ${posSchemaError.message}`);
+  process.exit(1);
+}
 
 let userId;
 const created = await supabase.auth.admin.createUser({
@@ -126,8 +143,6 @@ await must(
       full_name: salesName,
       email: salesEmail,
       phone: salesPhone || null,
-      branch: salesBranch,
-      shift: salesShift,
       status: "active",
       permissions: ["discounts", "reports"],
     },

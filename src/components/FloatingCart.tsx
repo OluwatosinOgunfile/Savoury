@@ -3,9 +3,13 @@ import { ShoppingBag } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCart } from "@/hooks/useCart";
 import { formatCurrency } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
 
 export function FloatingCart() {
   const { itemCount, total } = useCart();
+  const { profile } = useAuth();
+
+  if (profile?.role === "admin" || profile?.role === "sales_rep") return null;
 
   return (
     <AnimatePresence>
