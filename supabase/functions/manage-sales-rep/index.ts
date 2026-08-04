@@ -66,6 +66,7 @@ serve(async (req) => {
 
     let authUserId = await findAuthUserIdByEmail(adminClient, email);
     let nextPassword: string | undefined;
+    let createdAuthUser = false;
     if (!authUserId) {
       nextPassword = temporaryPassword();
       const { data, error } = await adminClient.auth.admin.createUser({
@@ -76,12 +77,26 @@ serve(async (req) => {
       });
       if (error) return json({ error: error.message }, 400);
       authUserId = data.user?.id;
+      createdAuthUser = Boolean(authUserId);
     }
 
     if (!authUserId) return json({ error: "Could not create sales representative auth user." }, 400);
 
-    await adminClient.from("users").upsert({ id: authUserId, email, role: "sales_rep" }, { onConflict: "id" });
-    await adminClient.from("profiles").upsert({ id: authUserId, full_name: fullName, phone: phone || null }, { onConflict: "id" });
+    const { error: appUserError } = await adminClient
+      .from("users")
+      .upsert({ id: authUserId, email, role: "sales_rep" }, { onConflict: "id" });
+    if (appUserError) {
+      if (createdAuthUser) await adminClient.auth.admin.deleteUser(authUserId);
+      return json({ error: appUserError.message }, 400);
+    }
+
+    const { error: profileError } = await adminClient
+      .from("profiles")
+      .upsert({ id: authUserId, full_name: fullName, phone: phone || null }, { onConflict: "id" });
+    if (profileError) {
+      if (createdAuthUser) await adminClient.auth.admin.deleteUser(authUserId);
+      return json({ error: profileError.message }, 400);
+    }
 
     const { data: rep, error: repError } = await adminClient
       .from("sales_representatives")
@@ -101,7 +116,10 @@ serve(async (req) => {
       .select("id, full_name, email, phone, staff_id, status, permissions, created_at, last_login_at")
       .single();
 
-    if (repError) return json({ error: repError.message }, 400);
+    if (repError) {
+      if (createdAuthUser) await adminClient.auth.admin.deleteUser(authUserId);
+      return json({ error: repError.message }, 400);
+    }
     return json({
       salesRepresentative: {
         id: rep.id,

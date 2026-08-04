@@ -163,48 +163,18 @@ export async function saveSalesRepresentative(rep: Omit<SalesRepresentative, "id
       },
     });
 
-    if (!functionError && functionData?.salesRepresentative) {
-      return {
-        ...functionData.salesRepresentative,
-        temporaryPassword: functionData.temporaryPassword,
-      } as SalesRepresentative;
+    if (functionError || functionData?.error) {
+      throw new Error(functionData?.error || functionError?.message || "Could not provision the POS login account.");
     }
 
-    if (functionError) {
-      console.warn("Could not use manage-sales-rep function. Falling back to table save.", functionError);
+    if (!functionData?.salesRepresentative) {
+      throw new Error("The POS account service returned no Sales Representative account.");
     }
 
-    const { data, error } = await supabase
-      .from("sales_representatives")
-      .upsert(
-        {
-          id: rep.id,
-          full_name: next.fullName,
-          email: next.email,
-          phone: next.phone || null,
-          staff_id: next.staffId,
-          status: next.status,
-          permissions: next.permissions,
-        },
-        { onConflict: "email" }
-      )
-      .select("id, full_name, email, phone, staff_id, status, permissions, created_at, last_login_at")
-      .single();
-
-    if (!error && data) {
-      return {
-        id: data.id,
-        fullName: data.full_name,
-        email: data.email,
-        phone: data.phone || undefined,
-        staffId: data.staff_id,
-        status: data.status,
-        permissions: data.permissions || [],
-        createdAt: data.created_at,
-        lastLoginAt: data.last_login_at || undefined,
-      } as SalesRepresentative;
-    }
-    console.warn("Could not save sales representative to Supabase.", error);
+    return {
+      ...functionData.salesRepresentative,
+      temporaryPassword: functionData.temporaryPassword,
+    } as SalesRepresentative;
   }
 
   const existing = getSalesRepresentatives();
@@ -217,7 +187,7 @@ export async function resetSalesRepresentativePassword(email: string) {
   const { data, error } = await supabase.functions.invoke("manage-sales-rep", {
     body: { action: "reset_password", email },
   });
-  if (error) throw error;
+  if (error || data?.error) throw new Error(data?.error || error?.message || "Could not reset the POS password.");
   return data?.temporaryPassword as string | undefined;
 }
 

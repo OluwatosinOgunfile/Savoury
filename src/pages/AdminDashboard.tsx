@@ -42,6 +42,7 @@ export function AdminDashboard() {
   const [feedback, setFeedback] = useState("Ready to manage today's operations.");
   const [now, setNow] = useState(() => Date.now());
   const [repForm, setRepForm] = useState({ fullName: "", email: "", phone: "" });
+  const [accessCredentials, setAccessCredentials] = useState<{ email: string; password: string; title: string } | null>(null);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 30000);
@@ -101,22 +102,33 @@ export function AdminDashboard() {
       setFeedback("Provide sales representative name and email.");
       return;
     }
-    const saved = await saveAdminSalesRepresentative({
-      fullName: repForm.fullName,
-      email: repForm.email,
-      phone: repForm.phone || undefined,
-      status: "active",
-      permissions: ["discounts", "reports"],
-    });
-    await queryClient.invalidateQueries({ queryKey: adminDashboardKeys.salesReps });
-    setRepForm({ fullName: "", email: "", phone: "" });
-    setFeedback(saved.temporaryPassword ? `Sales representative created. Temporary password for ${saved.email}: ${saved.temporaryPassword}` : "Sales representative profile saved.");
+    try {
+      const saved = await saveAdminSalesRepresentative({
+        fullName: repForm.fullName,
+        email: repForm.email,
+        phone: repForm.phone || undefined,
+        status: "active",
+        permissions: ["discounts", "reports"],
+      });
+      await queryClient.invalidateQueries({ queryKey: adminDashboardKeys.salesReps });
+      setRepForm({ fullName: "", email: "", phone: "" });
+      if (saved.temporaryPassword) {
+        setAccessCredentials({ email: saved.email, password: saved.temporaryPassword, title: "POS account created" });
+        setFeedback("Sales Representative login created successfully.");
+      } else {
+        setFeedback("Sales Representative updated. Use Reset Password to issue new login credentials.");
+      }
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : "Could not create the Sales Representative login.");
+    }
   };
 
   const resetRepPassword = async (rep: SalesRepresentative) => {
     try {
       const password = await resetSalesRepresentativePassword(rep.email);
-      setFeedback(password ? `Temporary password for ${rep.email}: ${password}` : `Password reset needs the manage-sales-rep function deployed for ${rep.email}.`);
+      if (!password) throw new Error("The password service returned no temporary password.");
+      setAccessCredentials({ email: rep.email, password, title: "POS password reset" });
+      setFeedback("A new temporary POS password has been generated.");
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : "Could not reset sales representative password.");
     }
@@ -136,6 +148,25 @@ export function AdminDashboard() {
 
   return (
     <main className="app-container py-6">
+      {accessCredentials && (
+        <div className="fixed inset-0 z-[100] grid place-items-center bg-black/70 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label={accessCredentials.title}>
+          <Card className="w-full max-w-md border-savoury-primary/30 shadow-premium">
+            <CardContent className="p-6">
+              <p className="text-xs font-black uppercase tracking-[0.2em] text-savoury-primary">Sales Representative access</p>
+              <h2 className="mt-2 text-2xl font-black">{accessCredentials.title}</h2>
+              <p className="mt-2 text-sm font-semibold text-zinc-500">Give these temporary credentials securely to the staff member. They can sign in through the normal login page.</p>
+              <div className="mt-5 grid gap-3">
+                <div className="rounded-xl bg-zinc-100 p-4 dark:bg-white/10"><p className="text-xs font-black uppercase text-zinc-500">Email</p><p className="mt-1 break-all font-black">{accessCredentials.email}</p></div>
+                <div className="rounded-xl bg-zinc-100 p-4 dark:bg-white/10"><p className="text-xs font-black uppercase text-zinc-500">Temporary password</p><p className="mt-1 break-all font-mono text-lg font-black">{accessCredentials.password}</p></div>
+              </div>
+              <div className="mt-5 grid gap-2 sm:grid-cols-2">
+                <Button variant="outline" onClick={() => navigator.clipboard.writeText(`Email: ${accessCredentials.email}\nPassword: ${accessCredentials.password}`)}>Copy credentials</Button>
+                <Button onClick={() => setAccessCredentials(null)}>Done</Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
       <div className="mb-6 flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
         <div>
           <p className="font-black uppercase text-savoury-primary">Admin dashboard</p>
