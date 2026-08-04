@@ -18,6 +18,10 @@ export function AuthCallbackPage() {
         navigate(profile.mustChangePassword ? "/change-password" : "/pos", { replace: true });
         return;
       }
+      if (profile?.role === "kitchen") {
+        navigate(profile.mustChangePassword ? "/change-password" : "/kitchen", { replace: true });
+        return;
+      }
       navigate("/account", { replace: true });
     }
     if (!loading && !isAuthenticated) navigate("/login", { replace: true });

@@ -23,6 +23,7 @@ import {
 import { fetchCategories, foodKeys } from "@/services/foodService";
 import { fetchAdminOrders, getAdminOrders, updateStoredOrderStatus, type AdminOrderStatus, type StoredOrder } from "@/services/orderStorage";
 import { resetSalesRepresentativePassword, type SalesRepresentative } from "@/services/posService";
+import { fetchKitchenStaff, resetKitchenPassword, saveKitchenStaff, type KitchenStaff } from "@/services/kitchenService";
 
 const orderStatusOptions: AdminOrderStatus[] = ["preparing", "ready", "out_for_delivery", "delivered"];
 
@@ -36,12 +37,14 @@ export function AdminDashboard() {
   const { data: highlightedReviews = [] } = useQuery({ queryKey: adminDashboardKeys.reviews, queryFn: fetchAdminReviews });
   const { data: adminCoupons = [] } = useQuery({ queryKey: adminDashboardKeys.coupons, queryFn: fetchAdminCoupons });
   const { data: salesReps = [] } = useQuery({ queryKey: adminDashboardKeys.salesReps, queryFn: fetchAdminSalesRepresentatives });
+  const { data: kitchenStaff = [] } = useQuery({ queryKey: ["admin-kitchen-staff"], queryFn: fetchKitchenStaff });
 
   const [orders, setOrders] = useState<StoredOrder[]>(() => getAdminOrders());
   const [orderSearch, setOrderSearch] = useState("");
   const [feedback, setFeedback] = useState("Ready to manage today's operations.");
   const [now, setNow] = useState(() => Date.now());
   const [repForm, setRepForm] = useState({ fullName: "", email: "", phone: "" });
+  const [kitchenForm, setKitchenForm] = useState({ fullName: "", email: "", phone: "" });
   const [accessCredentials, setAccessCredentials] = useState<{ email: string; password: string; title: string } | null>(null);
 
   useEffect(() => {
@@ -146,13 +149,49 @@ export function AdminDashboard() {
     }
   };
 
+  const createKitchenStaff = async () => {
+    if (!kitchenForm.fullName.trim() || !kitchenForm.email.trim()) {
+      setFeedback("Provide kitchen staff name and email.");
+      return;
+    }
+    try {
+      const saved = await saveKitchenStaff({ ...kitchenForm, phone: kitchenForm.phone || undefined, status: "active" });
+      await queryClient.invalidateQueries({ queryKey: ["admin-kitchen-staff"] });
+      setKitchenForm({ fullName: "", email: "", phone: "" });
+      if (saved.temporaryPassword) setAccessCredentials({ email: saved.email, password: saved.temporaryPassword, title: "Kitchen account created" });
+      setFeedback(saved.temporaryPassword ? "Kitchen staff login created successfully." : "Kitchen staff profile updated. Reset the password to issue new credentials.");
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : "Could not create the kitchen account.");
+    }
+  };
+
+  const toggleKitchenStaff = async (staff: KitchenStaff) => {
+    try {
+      await saveKitchenStaff({ fullName: staff.fullName, email: staff.email, phone: staff.phone, status: staff.status === "active" ? "suspended" : "active" });
+      await queryClient.invalidateQueries({ queryKey: ["admin-kitchen-staff"] });
+      setFeedback(`${staff.fullName} has been ${staff.status === "active" ? "suspended" : "activated"}.`);
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : "Could not update kitchen staff.");
+    }
+  };
+
+  const resetKitchenStaffPassword = async (staff: KitchenStaff) => {
+    try {
+      const password = await resetKitchenPassword(staff.email);
+      setAccessCredentials({ email: staff.email, password, title: "Kitchen password reset" });
+      setFeedback("A new temporary kitchen password has been generated.");
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : "Could not reset the kitchen password.");
+    }
+  };
+
   return (
     <main className="app-container py-6">
       {accessCredentials && (
         <div className="fixed inset-0 z-[100] grid place-items-center bg-black/70 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label={accessCredentials.title}>
           <Card className="w-full max-w-md border-savoury-primary/30 shadow-premium">
             <CardContent className="p-6">
-              <p className="text-xs font-black uppercase tracking-[0.2em] text-savoury-primary">Sales Representative access</p>
+              <p className="text-xs font-black uppercase tracking-[0.2em] text-savoury-primary">Staff access</p>
               <h2 className="mt-2 text-2xl font-black">{accessCredentials.title}</h2>
               <p className="mt-2 text-sm font-semibold text-zinc-500">Give these temporary credentials securely to the staff member. They can sign in through the normal login page.</p>
               <div className="mt-5 grid gap-3">
@@ -352,6 +391,39 @@ export function AdminDashboard() {
                 </tbody>
               </table>
               {!salesReps.length && <div className="mt-3"><EmptyState text="No sales representatives yet." /></div>}
+            </div>
+          </CardContent>
+        </Card>
+      </section>
+
+      <section className="mt-6">
+        <Card>
+          <CardContent>
+            <div className="mb-4 flex flex-col justify-between gap-3 lg:flex-row lg:items-end">
+              <div><h2 className="text-xl font-black">Kitchen Staff</h2><p className="mt-1 text-sm font-semibold text-zinc-500">Create and manage accounts that process app and counter orders.</p></div>
+              <div className="grid gap-2 md:grid-cols-4">
+                <Input placeholder="Full name" value={kitchenForm.fullName} onChange={(event) => setKitchenForm({ ...kitchenForm, fullName: event.target.value })} />
+                <Input type="email" placeholder="Email" value={kitchenForm.email} onChange={(event) => setKitchenForm({ ...kitchenForm, email: event.target.value })} />
+                <Input placeholder="Phone" value={kitchenForm.phone} onChange={(event) => setKitchenForm({ ...kitchenForm, phone: event.target.value })} />
+                <Button onClick={createKitchenStaff}>Create Kitchen User</Button>
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[680px] text-left text-sm">
+                <thead className="text-xs uppercase text-zinc-400"><tr><th className="py-3">Staff</th><th>Email</th><th>Status</th><th>Password</th><th>Actions</th></tr></thead>
+                <tbody>
+                  {kitchenStaff.map((staff) => (
+                    <tr key={staff.id} className="border-t border-zinc-100 dark:border-white/10">
+                      <td className="py-4 font-black">{staff.fullName}<p className="text-xs text-zinc-500">{staff.staffId}</p></td>
+                      <td>{staff.email}</td>
+                      <td><span className={`rounded-full px-3 py-1 text-xs font-black capitalize ${staff.status === "active" ? "bg-savoury-primary/10 text-savoury-primary" : "bg-red-500/10 text-red-500"}`}>{staff.status}</span></td>
+                      <td>{staff.mustChangePassword ? "Change required" : "Private password set"}</td>
+                      <td className="flex gap-2 py-3"><Button size="sm" variant="outline" onClick={() => toggleKitchenStaff(staff)}>{staff.status === "active" ? "Suspend" : "Activate"}</Button><Button size="sm" variant="outline" onClick={() => resetKitchenStaffPassword(staff)}>Reset Password</Button></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {!kitchenStaff.length && <div className="mt-3"><EmptyState text="No kitchen staff accounts yet." /></div>}
             </div>
           </CardContent>
         </Card>

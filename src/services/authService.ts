@@ -64,16 +64,26 @@ export async function getPostLoginPath(userId: string | undefined, fallbackPath:
     if (salesRepError) throw new Error("Your POS account status could not be verified. Contact an administrator.");
     if (salesRep?.status === "active" && salesRep.must_change_password) return "/change-password";
   }
+  if (role === "kitchen") {
+    const { data: kitchenStaff, error: kitchenError } = await supabase
+      .from("kitchen_staff")
+      .select("status, must_change_password")
+      .eq("auth_user_id", userId)
+      .maybeSingle();
+    if (kitchenError) throw new Error("Your kitchen account status could not be verified. Contact an administrator.");
+    if (kitchenStaff?.status === "active" && kitchenStaff.must_change_password) return "/change-password";
+  }
   return postLoginPath(role, fallbackPath);
 }
 
-export async function completeFirstLoginPasswordChange(password: string) {
+export async function completeFirstLoginPasswordChange(password: string, role: "sales_rep" | "kitchen") {
   if (!isSupabaseConfigured || !supabase) throw new Error("Authentication is not configured.");
 
   const { error: passwordError } = await supabase.auth.updateUser({ password });
   if (passwordError) throw passwordError;
 
-  const { data, error } = await supabase.functions.invoke("manage-sales-rep", {
+  const functionName = role === "kitchen" ? "manage-kitchen-staff" : "manage-sales-rep";
+  const { data, error } = await supabase.functions.invoke(functionName, {
     body: { action: "complete_password_change" },
   });
   if (error || data?.error) {

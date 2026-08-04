@@ -20,7 +20,9 @@ import { NotFoundPage } from "@/pages/NotFoundPage";
 import { PrivacyPage } from "@/pages/PrivacyPage";
 import { RequireSalesRep } from "@/components/RequireSalesRep";
 import { RequireCustomer } from "@/components/RequireCustomer";
+import { RequireKitchen } from "@/components/RequireKitchen";
 import { SalesRepPosPage } from "@/pages/SalesRepPosPage";
+import { KitchenDashboardPage } from "@/pages/KitchenDashboardPage";
 import { SignupPage } from "@/pages/SignupPage";
 import { TermsPage } from "@/pages/TermsPage";
 import { TrackingPage } from "@/pages/TrackingPage";
@@ -48,6 +50,7 @@ export function App() {
         <Route path="login" element={<LoginPage />} />
         <Route path="signup" element={<SignupPage />} />
         <Route path="pos" element={<RequireSalesRep><SalesRepPosPage /></RequireSalesRep>} />
+        <Route path="kitchen" element={<RequireKitchen><KitchenDashboardPage /></RequireKitchen>} />
         <Route path="admin" element={<RequireAdmin><AdminDashboard /></RequireAdmin>} />
         <Route path="admin/orders/:orderId" element={<RequireAdmin><AdminOrderDetailsPage /></RequireAdmin>} />
         <Route path="admin/sales-representatives/:repId" element={<RequireAdmin><AdminSalesRepActivityPage /></RequireAdmin>} />

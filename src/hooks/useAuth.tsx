@@ -118,6 +118,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       resolvedFullName = salesRep?.full_name?.trim() || resolvedFullName;
     }
 
+    if (baseRole === "kitchen") {
+      const { data: kitchenStaff, error: kitchenError } = await supabase
+        .from("kitchen_staff")
+        .select("full_name, status, must_change_password")
+        .eq("auth_user_id", activeUser.id)
+        .maybeSingle();
+
+      accountStatus = kitchenError || !kitchenStaff ? "unprovisioned" : kitchenStaff.status === "active" ? "active" : "suspended";
+      mustChangePassword = kitchenStaff?.must_change_password === true;
+      resolvedFullName = kitchenStaff?.full_name?.trim() || resolvedFullName;
+    }
+
     return {
       id: data.id,
       fullName: resolvedFullName,
@@ -200,8 +212,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       window.setTimeout(async () => {
         const nextProfile = await resolveProfile(nextSession?.user || null);
         if (revision !== authRevision.current) return;
-        if (event === "SIGNED_IN" && nextProfile?.role === "sales_rep") {
-          await authClient.functions.invoke("manage-sales-rep", { body: { action: "record_login" } });
+        if (event === "SIGNED_IN" && (nextProfile?.role === "sales_rep" || nextProfile?.role === "kitchen")) {
+          const functionName = nextProfile.role === "kitchen" ? "manage-kitchen-staff" : "manage-sales-rep";
+          await authClient.functions.invoke(functionName, { body: { action: "record_login" } });
         }
         setProfile(nextProfile);
         setLoading(false);

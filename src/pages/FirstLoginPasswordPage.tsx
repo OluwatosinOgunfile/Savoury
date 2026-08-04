@@ -26,9 +26,11 @@ export function FirstLoginPasswordPage() {
 
   if (loading) return <main className="app-container grid min-h-[60vh] place-items-center"><div className="h-10 w-10 animate-spin rounded-full border-2 border-savoury-primary border-t-transparent" /></main>;
   if (!isAuthenticated) return <Navigate to="/login" replace />;
-  if (profile?.role !== "sales_rep") return <Navigate to={profile?.role === "admin" ? "/admin" : "/account"} replace />;
-  if (profile.accountStatus !== "active") return <Navigate to="/pos" replace />;
-  if (!profile.mustChangePassword) return <Navigate to="/pos" replace />;
+  if (profile?.role !== "sales_rep" && profile?.role !== "kitchen") return <Navigate to={profile?.role === "admin" ? "/admin" : "/account"} replace />;
+  const staffRole = profile.role;
+  const dashboardPath = staffRole === "kitchen" ? "/kitchen" : "/pos";
+  if (profile.accountStatus !== "active") return <Navigate to={dashboardPath} replace />;
+  if (!profile.mustChangePassword) return <Navigate to={dashboardPath} replace />;
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -45,9 +47,9 @@ export function FirstLoginPasswordPage() {
 
     setSaving(true);
     try {
-      await completeFirstLoginPasswordChange(password);
+      await completeFirstLoginPasswordChange(password, staffRole);
       await refreshProfile();
-      navigate("/pos", { replace: true });
+      navigate(dashboardPath, { replace: true });
     } catch (changeError) {
       setError(changeError instanceof Error ? changeError.message : "Could not change the password.");
     } finally {

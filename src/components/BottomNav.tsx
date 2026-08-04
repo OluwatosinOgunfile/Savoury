@@ -16,6 +16,8 @@ export function BottomNav() {
       ? [{ to: "/admin", label: "Admin", icon: LayoutDashboard }]
       : profile?.role === "sales_rep"
         ? [{ to: "/pos", label: "POS", icon: LayoutDashboard }]
+        : profile?.role === "kitchen"
+          ? [{ to: "/kitchen", label: "Kitchen", icon: LayoutDashboard }]
         : items;
 
   return (

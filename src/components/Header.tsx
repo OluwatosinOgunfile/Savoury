@@ -15,8 +15,9 @@ export function Header({ darkMode, setDarkMode }: { darkMode: boolean; setDarkMo
   const [searchTerm, setSearchTerm] = useState("");
   const isOwnerAdmin = profile?.role === "admin";
   const isSalesRep = profile?.role === "sales_rep";
+  const isKitchen = profile?.role === "kitchen";
   const isCustomer = !isAuthenticated || profile?.role === "customer";
-  const dashboardPath = isOwnerAdmin ? "/admin" : isSalesRep ? "/pos" : "/account";
+  const dashboardPath = isOwnerAdmin ? "/admin" : isSalesRep ? "/pos" : isKitchen ? "/kitchen" : "/account";
 
   const submitSearch = (event: FormEvent) => {
     event.preventDefault();
@@ -62,6 +63,9 @@ export function Header({ darkMode, setDarkMode }: { darkMode: boolean; setDarkMo
                 POS
               </NavLink>
             )}
+            {isAuthenticated && isKitchen && (
+              <NavLink to="/kitchen" className={({ isActive }) => `text-sm font-black transition lg:text-base ${isActive ? "text-zinc-950 dark:text-white" : "text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white"}`}>Kitchen</NavLink>
+            )}
           </nav>
 
           <button className="hidden rounded-full p-1 text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-950 dark:text-zinc-400 dark:hover:bg-white/8 dark:hover:text-white md:inline-flex" aria-label="Toggle theme" onClick={() => setDarkMode(!darkMode)}>
@@ -80,7 +84,7 @@ export function Header({ darkMode, setDarkMode }: { darkMode: boolean; setDarkMo
           )}
 
           <Link to={isAuthenticated ? dashboardPath : "/signup"} className="hidden rounded-xl bg-savoury-primary px-5 py-2.5 text-sm font-black text-white shadow-[0_10px_24px_rgba(85,107,47,0.3)] transition hover:-translate-y-0.5 hover:bg-[#445626] md:block">
-            {isAuthenticated ? (isOwnerAdmin ? "Dashboard" : isSalesRep ? "POS" : (profile?.fullName || "Account").split(" ")[0]) : "Sign Up"}
+            {isAuthenticated ? (isOwnerAdmin ? "Dashboard" : isSalesRep ? "POS" : isKitchen ? "Kitchen" : (profile?.fullName || "Account").split(" ")[0]) : "Sign Up"}
           </Link>
 
           <Button className="text-zinc-950 hover:bg-zinc-100 dark:text-white dark:hover:bg-white/10 md:hidden" variant="ghost" size="icon" aria-label="Open mobile menu" onClick={() => setMobileOpen(!mobileOpen)}>
@@ -102,6 +106,9 @@ export function Header({ darkMode, setDarkMode }: { darkMode: boolean; setDarkMo
             )}
             {isAuthenticated && isSalesRep && (
               <Link to="/pos" onClick={() => setMobileOpen(false)} className="rounded-lg px-3 py-3 text-sm font-black text-zinc-700 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-white/10">POS Dashboard</Link>
+            )}
+            {isAuthenticated && isKitchen && (
+              <Link to="/kitchen" onClick={() => setMobileOpen(false)} className="rounded-lg px-3 py-3 text-sm font-black text-zinc-700 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-white/10">Kitchen Dashboard</Link>
             )}
             <button onClick={() => setDarkMode(!darkMode)} className="flex items-center justify-between rounded-lg px-3 py-3 text-sm font-black text-zinc-700 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-white/10">
               <span>{darkMode ? "Light Mode" : "Dark Mode"}</span>

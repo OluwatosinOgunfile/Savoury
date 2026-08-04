@@ -1,6 +1,6 @@
 import type { UserRole } from "@/types";
 
-const validRoles: UserRole[] = ["customer", "admin", "sales_rep"];
+const validRoles: UserRole[] = ["customer", "admin", "sales_rep", "kitchen"];
 
 export function isUserRole(value: unknown): value is UserRole {
   return typeof value === "string" && validRoles.includes(value as UserRole);
@@ -9,6 +9,7 @@ export function isUserRole(value: unknown): value is UserRole {
 export function roleHomePath(role: UserRole | undefined) {
   if (role === "admin") return "/admin";
   if (role === "sales_rep") return "/pos";
+  if (role === "kitchen") return "/kitchen";
   return "/account";
 }
 

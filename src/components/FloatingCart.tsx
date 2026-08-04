@@ -9,7 +9,7 @@ export function FloatingCart() {
   const { itemCount, total } = useCart();
   const { profile } = useAuth();
 
-  if (profile?.role === "admin" || profile?.role === "sales_rep") return null;
+  if (profile?.role === "admin" || profile?.role === "sales_rep" || profile?.role === "kitchen") return null;
 
   return (
     <AnimatePresence>
