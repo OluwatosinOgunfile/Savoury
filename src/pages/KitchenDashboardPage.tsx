@@ -21,6 +21,7 @@ export function KitchenDashboardPage() {
   const [message, setMessage] = useState("");
   const [updating, setUpdating] = useState<string | null>(null);
   const [orderSoundEnabled, setOrderSoundEnabled] = useState(() => localStorage.getItem("savoury-kitchen-order-sound") !== "false");
+  const [alertsSetupComplete, setAlertsSetupComplete] = useState(() => localStorage.getItem("savoury-kitchen-alerts-setup") === "true");
   const [audioReady, setAudioReady] = useState(false);
   const audioContextRef = useRef<AudioContext | null>(null);
   const pendingOrderTone = useRef(false);
@@ -36,6 +37,10 @@ export function KitchenDashboardPage() {
       if (audioContextRef.current.state === "suspended") await audioContextRef.current.resume();
       const ready = audioContextRef.current.state === "running";
       setAudioReady(ready);
+      if (ready) {
+        setAlertsSetupComplete(true);
+        localStorage.setItem("savoury-kitchen-alerts-setup", "true");
+      }
       return ready;
     } catch {
       setAudioReady(false);
@@ -167,9 +172,9 @@ export function KitchenDashboardPage() {
         <div className="mx-auto flex max-w-[1500px] flex-col justify-between gap-4 md:flex-row md:items-center">
           <div className="flex items-center gap-3"><span className="grid h-11 w-11 place-items-center rounded-xl bg-savoury-primary text-white"><ChefHat className="h-6 w-6" /></span><div><p className="text-xs font-black uppercase tracking-[0.2em] text-savoury-primary">Kitchen operations</p><h1 className="text-2xl font-black">Preparation Queue</h1><p className="text-sm font-semibold text-zinc-500">{profile?.fullName} · {new Date(now).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}</p></div></div>
           <div className="flex flex-wrap gap-2">
-            {!orderSoundEnabled && <Button variant="outline" onClick={() => { setOrderSoundEnabled(true); localStorage.setItem("savoury-kitchen-order-sound", "true"); setMessage("Sound enabled. Click Enable order alerts to activate audio."); }}><VolumeX className="h-4 w-4" /> Sound off</Button>}
-            {orderSoundEnabled && !audioReady && <Button onClick={async () => { const ready = await unlockOrderSound(); if (ready) { await playOrderTone(); setMessage("Kitchen order alerts are enabled."); } else { setMessage("The browser blocked audio. Check this tab's sound permission."); } }}><BellRing className="h-4 w-4" /> Enable order alerts</Button>}
-            {orderSoundEnabled && audioReady && <Button variant="outline" onClick={() => { setOrderSoundEnabled(false); setAudioReady(false); localStorage.setItem("savoury-kitchen-order-sound", "false"); setMessage("New-order sound muted."); }}><Volume2 className="h-4 w-4" /> Sound on</Button>}
+            {!orderSoundEnabled && <Button variant="outline" onClick={() => { setOrderSoundEnabled(true); localStorage.setItem("savoury-kitchen-order-sound", "true"); audioContextRef.current ||= new AudioContext(); void audioContextRef.current.resume().then(() => setAudioReady(audioContextRef.current?.state === "running")); setMessage("New-order sound enabled."); }}><VolumeX className="h-4 w-4" /> Sound off</Button>}
+            {orderSoundEnabled && !alertsSetupComplete && <Button onClick={async () => { const ready = await unlockOrderSound(); if (ready) { await playOrderTone(); setMessage("Kitchen order alerts are enabled on this device."); } else { setMessage("The browser blocked audio. Check this tab's sound permission."); } }}><BellRing className="h-4 w-4" /> Enable order alerts</Button>}
+            {orderSoundEnabled && alertsSetupComplete && <Button variant="outline" onClick={() => { setOrderSoundEnabled(false); setAudioReady(false); localStorage.setItem("savoury-kitchen-order-sound", "false"); setMessage("New-order sound muted."); }}><Volume2 className="h-4 w-4" /> Sound on</Button>}
             {orderSoundEnabled && audioReady && <Button variant="outline" onClick={() => { void playOrderTone(); setMessage("Playing the kitchen order test chime."); }}><BellRing className="h-4 w-4" /> Test chime</Button>}
             <Button variant="outline" onClick={signOut}><LogOut className="h-4 w-4" /> Sign out</Button>
           </div>
