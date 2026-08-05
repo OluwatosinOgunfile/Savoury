@@ -14,6 +14,7 @@
     "pos:create": "node scripts/create-sales-rep.mjs",
     "auth:verify-pos": "node scripts/verify-role-login.mjs",
     "auth:audit-pos": "node scripts/audit-sales-reps.mjs",
+    "auth:audit-kitchen": "node scripts/audit-kitchen-staff.mjs",
     "preview": "vite preview",
     "lint": "eslint ."
   },
