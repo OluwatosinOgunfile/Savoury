@@ -83,7 +83,6 @@ export interface PosCounterOrder {
   items: Array<{ name: string; quantity: number }>;
   total: number;
   createdAt: string;
-  readyAt?: string;
 }
 
 export interface PosStaffNotification {
@@ -371,7 +370,7 @@ export async function fetchMyPosCounterOrders(): Promise<PosCounterOrder[]> {
 
   const { data, error } = await supabase
     .from("pos_orders")
-    .select("id, receipt_number, customer_name, table_number, order_type, fulfillment_status, total, created_at, ready_at, pos_order_items(food_name, quantity)")
+    .select("id, receipt_number, customer_name, table_number, order_type, fulfillment_status, total, created_at, pos_order_items(food_name, quantity)")
     .eq("cashier_id", authData.user.id)
     .in("order_type", ["dine_in", "takeaway"])
     .in("fulfillment_status", ["received", "preparing", "ready"])
@@ -387,7 +386,6 @@ export async function fetchMyPosCounterOrders(): Promise<PosCounterOrder[]> {
     status: order.fulfillment_status,
     total: Number(order.total || 0),
     createdAt: order.created_at,
-    readyAt: order.ready_at || undefined,
     items: (order.pos_order_items || []).map((item: any) => ({
       name: item.food_name,
       quantity: Number(item.quantity || 0),

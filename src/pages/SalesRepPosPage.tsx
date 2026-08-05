@@ -79,8 +79,10 @@ export function SalesRepPosPage() {
   const [readySoundEnabled, setReadySoundEnabled] = useState(() => localStorage.getItem("savoury-pos-ready-sound") !== "false");
   const lastNotificationId = useRef<string | null>(null);
   const notificationsInitialized = useRef(false);
+  const counterOrdersInitialized = useRef(false);
+  const announcedReadyOrderIds = useRef(new Set<string>());
   const audioContextRef = useRef<AudioContext | null>(null);
-  const { data: counterOrders = [] } = useQuery({
+  const { data: counterOrders = [], isFetched: counterOrdersFetched } = useQuery({
     queryKey: ["pos-counter-orders", profile?.id],
     queryFn: fetchMyPosCounterOrders,
     enabled: Boolean(profile?.id),
@@ -169,15 +171,36 @@ export function SalesRepPosPage() {
     if (!notificationsInitialized.current) {
       notificationsInitialized.current = true;
       lastNotificationId.current = latestUnread?.id || null;
+      if (latestUnread) announcedReadyOrderIds.current.add(latestUnread.orderId);
       if (latestUnread) setToast(latestUnread.body);
       return;
     }
     if (latestUnread && latestUnread.id !== lastNotificationId.current) {
       lastNotificationId.current = latestUnread.id;
       setToast(latestUnread.body);
-      void playReadyTone();
+      if (!announcedReadyOrderIds.current.has(latestUnread.orderId)) {
+        announcedReadyOrderIds.current.add(latestUnread.orderId);
+        void playReadyTone();
+      }
     }
   }, [notificationsFetched, playReadyTone, posNotifications]);
+
+  useEffect(() => {
+    if (!counterOrdersFetched) return;
+    const currentReadyOrders = counterOrders.filter((order) => order.status === "ready");
+    if (!counterOrdersInitialized.current) {
+      counterOrdersInitialized.current = true;
+      currentReadyOrders.forEach((order) => announcedReadyOrderIds.current.add(order.id));
+      return;
+    }
+
+    const newlyReady = currentReadyOrders.find((order) => !announcedReadyOrderIds.current.has(order.id));
+    currentReadyOrders.forEach((order) => announcedReadyOrderIds.current.add(order.id));
+    if (newlyReady) {
+      setToast(`${newlyReady.receiptNumber} is ready for counter handover.`);
+      void playReadyTone();
+    }
+  }, [counterOrders, counterOrdersFetched, playReadyTone]);
 
   useEffect(() => {
     if (!isSupabaseConfigured || !supabase || !profile?.id) return;
@@ -188,10 +211,13 @@ export function SalesRepPosPage() {
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "pos_staff_notifications", filter: `recipient_id=eq.${profile.id}` },
         (payload) => {
-          const notification = payload.new as { id?: string; body?: string };
+          const notification = payload.new as { id?: string; pos_order_id?: string; body?: string };
           lastNotificationId.current = notification.id || null;
           setToast(notification.body || "An order is ready for counter handover.");
-          void playReadyTone();
+          if (!notification.pos_order_id || !announcedReadyOrderIds.current.has(notification.pos_order_id)) {
+            if (notification.pos_order_id) announcedReadyOrderIds.current.add(notification.pos_order_id);
+            void playReadyTone();
+          }
           void queryClient.invalidateQueries({ queryKey: ["pos-counter-orders", profile.id] });
           void queryClient.invalidateQueries({ queryKey: ["pos-staff-notifications", profile.id] });
         }
@@ -395,6 +421,20 @@ export function SalesRepPosPage() {
               {readySoundEnabled ? <Volume2 className="mb-1 h-4 w-4 text-savoury-primary" /> : <VolumeX className="mb-1 h-4 w-4 text-zinc-400" />}
               {readySoundEnabled ? "Sound on" : "Sound off"}
             </button>
+            {readySoundEnabled && (
+              <button
+                type="button"
+                onClick={() => {
+                  void playReadyTone();
+                  setToast("Playing the ready-order test chime.");
+                }}
+                className="rounded-xl border border-savoury-primary/20 bg-savoury-primary/10 px-4 py-3 text-left text-xs font-black text-savoury-primary"
+                title="Test ready-order chime"
+              >
+                <Volume2 className="mb-1 h-4 w-4" />
+                Test chime
+              </button>
+            )}
             <button className={`rounded-xl px-4 py-3 text-left text-xs font-black ${online ? "bg-emerald-500/10 text-emerald-600" : "bg-red-500/10 text-red-500"}`}>
               {online ? "Online" : "Offline Mode"}
             </button>
