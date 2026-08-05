@@ -23,7 +23,10 @@ create table if not exists public.kitchen_staff (
 
 alter table public.pos_orders
 add column if not exists fulfillment_status text not null default 'received'
-check (fulfillment_status in ('received', 'preparing', 'ready', 'completed', 'cancelled'));
+check (fulfillment_status in ('received', 'preparing', 'ready', 'out_for_delivery', 'delivered', 'completed', 'cancelled'));
+
+alter table public.pos_orders
+add column if not exists delivery_address text;
 
 alter table public.kitchen_staff enable row level security;
 

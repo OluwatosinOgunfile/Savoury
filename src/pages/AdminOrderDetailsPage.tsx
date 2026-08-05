@@ -72,10 +72,11 @@ export function AdminOrderDetailsPage() {
             Back to Dashboard
           </Link>
           <p className="mt-5 font-black uppercase text-savoury-primary">Order details</p>
-          <h1 className="section-title text-3xl md:text-4xl">Order {order.id}</h1>
+          <h1 className="section-title text-3xl md:text-4xl">Order {order.receiptNumber || order.id}</h1>
+          {order.source === "pos" && <p className="mt-2 text-xs font-black uppercase tracking-wide text-savoury-primary">POS delivery order</p>}
           <p className="mt-2 text-zinc-500">Review the customer information and every meal submitted in this order.</p>
         </div>
-        <StatusPill status={order.status} />
+        <StatusPill status={order.status} source={order.source} />
       </div>
 
       <section className="grid gap-6 lg:grid-cols-[1fr_380px]">
@@ -131,6 +132,7 @@ export function AdminOrderDetailsPage() {
               <div className="mt-4 space-y-3 text-sm font-semibold">
                 <Line label="Items" value={`${itemCount}`} />
                 <Line label="Delivery option" value={order.deliveryMode} />
+                <Line label="Order source" value={order.source === "pos" ? "Restaurant POS" : "Customer app"} />
                 <Line label="Status" value={order.status.replace(/_/g, " ")} />
                 <Line label="Total" value={formatCurrency(order.total)} strong />
               </div>
@@ -148,11 +150,11 @@ export function AdminOrderDetailsPage() {
   );
 }
 
-function StatusPill({ status }: { status: AdminOrderStatus }) {
+function StatusPill({ status, source }: { status: AdminOrderStatus; source?: StoredOrder["source"] }) {
   if (status === "pending") {
     return (
       <span className="inline-flex min-w-[160px] items-center justify-center whitespace-nowrap rounded-full bg-zinc-100 px-5 py-2 text-sm font-black text-zinc-500 dark:bg-white/10">
-        Awaiting approval
+        {source === "pos" ? "Kitchen queue" : "Awaiting approval"}
       </span>
     );
   }

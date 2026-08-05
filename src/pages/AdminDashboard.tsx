@@ -27,6 +27,13 @@ import { fetchKitchenStaff, resetKitchenPassword, saveKitchenStaff, type Kitchen
 
 const orderStatusOptions: AdminOrderStatus[] = ["preparing", "ready", "out_for_delivery", "delivered"];
 
+function availableOrderStatuses(order: StoredOrder): AdminOrderStatus[] {
+  if (order.source !== "pos") return orderStatusOptions;
+  if (order.status === "ready") return ["ready", "out_for_delivery"];
+  if (order.status === "out_for_delivery") return ["out_for_delivery", "delivered"];
+  return [];
+}
+
 export function AdminDashboard() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -59,10 +66,12 @@ export function AdminDashboard() {
       if (mounted) setOrders(nextOrders);
     };
     refreshOrders();
+    const refreshTimer = window.setInterval(refreshOrders, 10000);
     window.addEventListener("savoury-orders-updated", refreshOrders);
     window.addEventListener("storage", refreshOrders);
     return () => {
       mounted = false;
+      window.clearInterval(refreshTimer);
       window.removeEventListener("savoury-orders-updated", refreshOrders);
       window.removeEventListener("storage", refreshOrders);
     };
@@ -72,7 +81,7 @@ export function AdminDashboard() {
     const query = orderSearch.trim().toLowerCase();
     if (!query) return orders;
     return orders.filter((order) =>
-      [order.id, order.customerName, order.phone, order.status].some((value) => value.toLowerCase().includes(query))
+      [order.id, order.receiptNumber || "", order.customerName, order.phone, order.status].some((value) => value.toLowerCase().includes(query))
     );
   }, [orders, orderSearch]);
 
@@ -250,11 +259,12 @@ export function AdminDashboard() {
                     <tr key={order.id} className="border-t border-zinc-100 dark:border-white/10">
                       <td className="py-4 font-black">
                         <Link className="text-savoury-primary underline-offset-4 transition hover:underline" to={`/admin/orders/${order.id}`}>
-                          {order.id}
+                          {order.receiptNumber || order.id}
                         </Link>
+                        {order.source === "pos" && <p className="mt-1 text-[10px] font-black uppercase text-zinc-400">POS delivery</p>}
                       </td>
                       <td>{order.customerName}<p className="text-xs text-zinc-500">{order.phone}</p></td>
-                      <td><StatusPill status={order.status} /></td>
+                      <td><StatusPill status={order.status} source={order.source} /></td>
                       <td>
                         {order.status === "pending" ? (
                           <div>
@@ -267,23 +277,23 @@ export function AdminDashboard() {
                       </td>
                       <td className="font-black">{formatCurrency(order.total)}</td>
                       <td>
-                        {order.status !== "pending" && order.status !== "rejected" ? (
+                        {availableOrderStatuses(order).length ? (
                           <select className="h-9 rounded-lg border border-zinc-200 bg-white px-2 text-xs font-bold dark:border-white/10 dark:bg-zinc-950" value={order.status} onChange={(event) => updateOrderStatus(order.id, event.target.value as AdminOrderStatus)}>
-                            {orderStatusOptions.map((status) => <option key={status} value={status}>{status.replace(/_/g, " ")}</option>)}
+                            {availableOrderStatuses(order).map((status) => <option key={status} value={status}>{status.replace(/_/g, " ")}</option>)}
                           </select>
                         ) : (
-                          <span className="text-xs font-bold text-zinc-400">Hidden</span>
+                          <span className="text-xs font-bold text-zinc-400">{order.source === "pos" && ["pending", "preparing"].includes(order.status) ? "Kitchen processing" : "Hidden"}</span>
                         )}
                       </td>
                       <td>
                         <div className="flex gap-2">
-                          {order.status === "pending" ? (
+                          {order.status === "pending" && order.source !== "pos" ? (
                             <>
                               <Button size="sm" variant="secondary" onClick={() => updateOrderStatus(order.id, "preparing")}><CheckCircle2 className="h-4 w-4" /> Accept</Button>
                               <Button size="sm" variant="outline" onClick={() => updateOrderStatus(order.id, "rejected")}><XCircle className="h-4 w-4" /> Reject</Button>
                             </>
                           ) : (
-                            <span className="text-xs font-bold text-zinc-400">{order.status === "rejected" ? "Rejected" : "Accepted"}</span>
+                            <span className="text-xs font-bold text-zinc-400">{order.status === "rejected" ? "Rejected" : order.source === "pos" ? "POS paid" : "Accepted"}</span>
                           )}
                         </div>
                       </td>
@@ -462,9 +472,9 @@ export function AdminDashboard() {
   );
 }
 
-function StatusPill({ status }: { status: AdminOrderStatus }) {
+function StatusPill({ status, source }: { status: AdminOrderStatus; source?: StoredOrder["source"] }) {
   if (status === "pending") {
-    return <span className="text-xs font-bold text-zinc-400">—</span>;
+    return <span className="text-xs font-bold text-zinc-400">{source === "pos" ? "Kitchen queue" : "Awaiting approval"}</span>;
   }
 
   const tone = status === "rejected" ? "bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-300" : "bg-savoury-accent text-savoury-primary dark:bg-savoury-primary/10";

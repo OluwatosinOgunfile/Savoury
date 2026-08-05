@@ -10,6 +10,7 @@ export interface KitchenOrder {
   status: KitchenOrderStatus;
   orderType: string;
   customerName: string;
+  address?: string;
   instructions?: string;
   items: Array<{ name: string; quantity: number }>;
   createdAt: string;
@@ -32,7 +33,7 @@ export async function fetchKitchenOrders(): Promise<KitchenOrder[]> {
   if (!isSupabaseConfigured || !supabase) return [];
   const [appResult, posResult] = await Promise.all([
     supabase.from("orders").select("id, status, delivery_mode, customer_name, special_instructions, created_at, order_items(quantity, foods(name))").in("status", ["received", "preparing", "ready"]).order("created_at"),
-    supabase.from("pos_orders").select("id, receipt_number, fulfillment_status, order_type, customer_name, created_at, pos_order_items(food_name, quantity)").in("fulfillment_status", ["received", "preparing", "ready"]).order("created_at"),
+    supabase.from("pos_orders").select("id, receipt_number, fulfillment_status, order_type, customer_name, delivery_address, created_at, pos_order_items(food_name, quantity)").in("fulfillment_status", ["received", "preparing", "ready"]).order("created_at"),
   ]);
   if (appResult.error) throw appResult.error;
   if (posResult.error) throw posResult.error;
@@ -58,6 +59,7 @@ export async function fetchKitchenOrders(): Promise<KitchenOrder[]> {
     status: order.fulfillment_status,
     orderType: order.order_type,
     customerName: order.customer_name || "Walk-in customer",
+    address: order.delivery_address || undefined,
     createdAt: order.created_at,
     items: (order.pos_order_items || []).map((item: any) => ({ name: item.food_name, quantity: Number(item.quantity || 0) })),
   }));

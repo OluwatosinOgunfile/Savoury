@@ -29,12 +29,14 @@ create table if not exists public.pos_orders (
   customer_name text,
   customer_phone text,
   table_number text,
+  delivery_address text,
   order_type text not null default 'takeaway' check (order_type in ('dine_in', 'takeaway', 'delivery')),
   subtotal numeric not null default 0,
   discount numeric not null default 0,
   tax numeric not null default 0,
   total numeric not null default 0,
   status text not null default 'paid' check (status in ('paid', 'held', 'cancelled', 'refunded')),
+  fulfillment_status text not null default 'received' check (fulfillment_status in ('received', 'preparing', 'ready', 'out_for_delivery', 'delivered', 'completed', 'cancelled')),
   synced_at timestamptz default now(),
   created_at timestamptz not null default now()
 );

@@ -63,7 +63,7 @@ export function SalesRepPosPage() {
   const [toast, setToast] = useState("Ready for counter sales.");
   const [now, setNow] = useState(new Date());
   const [online, setOnline] = useState(navigator.onLine);
-  const [customer, setCustomer] = useState({ name: "", phone: "", tableNumber: "", orderType: "takeaway" as PosOrderType });
+  const [customer, setCustomer] = useState({ name: "", phone: "", tableNumber: "", deliveryAddress: "", orderType: "takeaway" as PosOrderType });
   const [discount, setDiscount] = useState(0);
 
   useEffect(() => {
@@ -135,7 +135,7 @@ export function SalesRepPosPage() {
   const clearOrder = () => {
     setCart([]);
     setDiscount(0);
-    setCustomer({ name: "", phone: "", tableNumber: "", orderType: "takeaway" });
+    setCustomer({ name: "", phone: "", tableNumber: "", deliveryAddress: "", orderType: "takeaway" });
   };
 
   const holdOrder = () => {
@@ -150,6 +150,7 @@ export function SalesRepPosPage() {
       customerName: customer.name || undefined,
       phone: customer.phone || undefined,
       tableNumber: customer.tableNumber || undefined,
+      deliveryAddress: customer.deliveryAddress || undefined,
       orderType: customer.orderType,
       discount: safeDiscount,
       createdAt: new Date().toISOString(),
@@ -166,6 +167,7 @@ export function SalesRepPosPage() {
       name: order.customerName || "",
       phone: order.phone || "",
       tableNumber: order.tableNumber || "",
+      deliveryAddress: order.deliveryAddress || "",
       orderType: order.orderType,
     });
     setDiscount(order.discount);
@@ -189,6 +191,7 @@ export function SalesRepPosPage() {
       customerName: customer.name || undefined,
       phone: customer.phone || undefined,
       tableNumber: customer.tableNumber || undefined,
+      deliveryAddress: customer.deliveryAddress || undefined,
       orderType: customer.orderType,
       items: cart,
       subtotal,
@@ -325,11 +328,14 @@ export function SalesRepPosPage() {
                 <Input placeholder="Customer name" value={customer.name} onChange={(event) => setCustomer({ ...customer, name: event.target.value })} />
                 <Input placeholder="Phone" value={customer.phone} onChange={(event) => setCustomer({ ...customer, phone: event.target.value })} />
                 <Input placeholder="Table optional" value={customer.tableNumber} onChange={(event) => setCustomer({ ...customer, tableNumber: event.target.value })} />
-                <select className="h-12 rounded-xl border border-white/10 bg-[#101010] px-4 text-sm font-bold text-white outline-none" value={customer.orderType} onChange={(event) => setCustomer({ ...customer, orderType: event.target.value as PosOrderType })}>
+                <select className="h-12 rounded-xl border border-zinc-200 bg-white px-4 text-sm font-bold text-zinc-950 outline-none dark:border-white/10 dark:bg-[#101010] dark:text-white" value={customer.orderType} onChange={(event) => setCustomer({ ...customer, orderType: event.target.value as PosOrderType })}>
                   <option value="dine_in">Dine In</option>
                   <option value="takeaway">Takeaway</option>
                   <option value="delivery">Delivery</option>
                 </select>
+                {customer.orderType === "delivery" && (
+                  <Input className="sm:col-span-2" placeholder="Delivery address" value={customer.deliveryAddress} onChange={(event) => setCustomer({ ...customer, deliveryAddress: event.target.value })} />
+                )}
               </div>
 
               <div className="max-h-[330px] space-y-3 overflow-auto pr-1">
@@ -358,7 +364,11 @@ export function SalesRepPosPage() {
               <div className="grid grid-cols-3 gap-2">
                 <Button variant="outline" onClick={holdOrder}><PauseCircle className="h-4 w-4" /> Hold</Button>
                 <Button variant="outline" onClick={clearOrder}><Trash2 className="h-4 w-4" /> Clear</Button>
-                <Button onClick={() => cart.length ? setPaymentOpen(true) : setToast("Add items before payment.")}><BadgeDollarSign className="h-4 w-4" /> Pay</Button>
+                <Button onClick={() => {
+                  if (!cart.length) return setToast("Add items before payment.");
+                  if (customer.orderType === "delivery" && !customer.deliveryAddress.trim()) return setToast("Enter a delivery address before payment.");
+                  setPaymentOpen(true);
+                }}><BadgeDollarSign className="h-4 w-4" /> Pay</Button>
               </div>
               <Button className="w-full" variant="secondary" onClick={() => { const last = getLastReceipt(); last ? setReceiptOpen(last) : setToast("No receipt to reprint yet."); }}>
                 <Printer className="h-4 w-4" /> Reprint Last Receipt
@@ -504,6 +514,8 @@ function ReceiptModal({ receipt, onClose }: { receipt: PosReceipt; onClose: () =
               <p className="mt-2">Receipt: {receipt.receiptNumber}</p>
               <p>{new Date(receipt.createdAt).toLocaleString()}</p>
               <p>Cashier: {receipt.cashierName}</p>
+              <p>Order type: {receipt.orderType.replace("_", " ")}</p>
+              {receipt.deliveryAddress && <p>Deliver to: {receipt.deliveryAddress}</p>}
             </div>
             <div className="my-3 border-t border-dashed border-zinc-400" />
             {receipt.items.map((item) => (
@@ -538,6 +550,8 @@ function receiptText(receipt: PosReceipt) {
     "Savoury",
     `Receipt: ${receipt.receiptNumber}`,
     `Cashier: ${receipt.cashierName}`,
+    `Order type: ${receipt.orderType.replace("_", " ")}`,
+    ...(receipt.deliveryAddress ? [`Deliver to: ${receipt.deliveryAddress}`] : []),
     new Date(receipt.createdAt).toLocaleString(),
     "",
     ...receipt.items.map((item) => `${item.quantity} x ${item.food.name} - ${formatCurrency(item.food.price * item.quantity)}`),

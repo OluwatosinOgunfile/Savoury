@@ -3,19 +3,23 @@ import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import type { CartItem, DeliveryMode, Order, PaymentMethod } from "@/types";
 
 export type AdminOrderStatus = "pending" | "preparing" | "ready" | "out_for_delivery" | "delivered" | "rejected";
-export type StoredOrder = Omit<Order, "status"> & {
+export type StoredOrder = Omit<Order, "status" | "paymentMethod"> & {
   status: AdminOrderStatus;
+  paymentMethod: PaymentMethod | "split";
   instructions?: string;
+  source?: "app" | "pos";
+  receiptNumber?: string;
 };
 
 const ordersKey = "savoury-submitted-orders";
 
-type DbOrderStatus = "received" | "preparing" | "cooking" | "ready" | "out_for_delivery" | "delivered" | "rejected";
+type DbOrderStatus = "received" | "preparing" | "cooking" | "ready" | "out_for_delivery" | "delivered" | "rejected" | "completed" | "cancelled";
 
 function toAppStatus(status: DbOrderStatus | string): AdminOrderStatus {
   if (status === "received") return "pending";
   if (status === "cooking") return "preparing";
-  if (status === "rejected") return "rejected";
+  if (status === "rejected" || status === "cancelled") return "rejected";
+  if (status === "completed") return "delivered";
   if (status === "ready" || status === "out_for_delivery" || status === "delivered" || status === "preparing") return status;
   return "pending";
 }
@@ -47,7 +51,7 @@ export function getAdminOrders(): StoredOrder[] {
   const submittedIds = new Set(submitted.map((order) => order.id));
   const demoOrders: StoredOrder[] = mockOrders
     .filter((order) => !submittedIds.has(order.id))
-    .map((order) => ({ ...order, status: "pending" }));
+    .map((order) => ({ ...order, source: "app", status: "pending" }));
   return [...submitted, ...demoOrders];
 }
 
@@ -63,6 +67,7 @@ function getLocalOrder(payload: {
 }): StoredOrder {
   return {
     id: `SV-${Date.now().toString().slice(-6)}`,
+    source: "app",
     customerName: payload.customerName,
     phone: payload.phone,
     address: payload.address,
@@ -132,8 +137,9 @@ export async function fetchAdminOrders(userId?: string): Promise<StoredOrder[]> 
     return getAdminOrders();
   }
 
-  return data.map((order) => ({
+  const appOrders = data.map((order) => ({
     id: order.id,
+    source: "app" as const,
     customerName: order.customer_name || "Savoury Customer",
     phone: order.customer_phone || "Not provided",
     address: order.delivery_address || "Pickup / address not provided",
@@ -169,6 +175,93 @@ export async function fetchAdminOrders(userId?: string): Promise<StoredOrder[]> 
       };
     }),
   })) as StoredOrder[];
+
+  if (userId) return appOrders;
+
+  const { data: posData, error: posError } = await supabase
+    .from("pos_orders")
+    .select(`
+      id,
+      receipt_number,
+      customer_name,
+      customer_phone,
+      delivery_address,
+      order_type,
+      fulfillment_status,
+      total,
+      created_at,
+      pos_payments (method),
+      pos_order_items (
+        food_id,
+        food_name,
+        quantity,
+        unit_price,
+        foods (
+          id,
+          name,
+          slug,
+          description,
+          image_url,
+          ingredients,
+          calories,
+          preparation_time,
+          rating,
+          popularity,
+          stock_quantity,
+          is_special,
+          is_recommended,
+          categories (name)
+        )
+      )
+    `)
+    .eq("order_type", "delivery")
+    .order("created_at", { ascending: false });
+
+  if (posError || !posData) {
+    console.warn("Could not load POS delivery orders. Run supabase/pos-delivery-flow-patch.sql once.", posError);
+    return appOrders;
+  }
+
+  const posOrders = posData.map((order: any) => ({
+    id: order.id,
+    source: "pos" as const,
+    receiptNumber: order.receipt_number,
+    customerName: order.customer_name || "Walk-in customer",
+    phone: order.customer_phone || "Not provided",
+    address: order.delivery_address || "Delivery address not provided",
+    status: toAppStatus(order.fulfillment_status),
+    paymentMethod: (order.pos_payments?.[0]?.method || "card") as PaymentMethod | "split",
+    deliveryMode: "delivery" as DeliveryMode,
+    total: Number(order.total || 0),
+    createdAt: order.created_at,
+    items: (order.pos_order_items || []).map((item: any) => {
+      const food = Array.isArray(item.foods) ? item.foods[0] : item.foods;
+      return {
+        quantity: Number(item.quantity || 0),
+        food: {
+          id: food?.id || item.food_id || `${order.id}-${item.food_name}`,
+          name: food?.name || item.food_name || "Savoury Meal",
+          slug: food?.slug || `pos-${item.food_id || order.id}`,
+          category: food?.categories?.name || "POS",
+          description: food?.description || "Prepared at the Savoury counter.",
+          price: Number(item.unit_price || 0),
+          image: food?.image_url || "/images/savoury-reference-hero.jpg",
+          ingredients: food?.ingredients || [],
+          calories: food?.calories || 0,
+          prepTime: food?.preparation_time || 25,
+          rating: Number(food?.rating || 4.8),
+          reviews: food?.popularity || 0,
+          popularity: food?.popularity || 0,
+          tags: [food?.categories?.name || "POS"],
+          isSpecial: food?.is_special,
+          isRecommended: food?.is_recommended,
+          stockQuantity: Number(food?.stock_quantity ?? 0),
+        },
+      };
+    }),
+  })) as StoredOrder[];
+
+  return [...appOrders, ...posOrders].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
 export async function saveSubmittedOrder(payload: {
@@ -248,7 +341,11 @@ export async function saveSubmittedOrder(payload: {
 
 export async function updateStoredOrderStatus(orderId: string, status: AdminOrderStatus, fallbackOrder?: StoredOrder) {
   if (isSupabaseConfigured && supabase && !orderId.startsWith("SV-")) {
-    const { error } = await supabase.from("orders").update({ status: toDbStatus(status) }).eq("id", orderId);
+    const isPosOrder = fallbackOrder?.source === "pos";
+    const posStatus = status === "pending" ? "received" : status === "rejected" ? "cancelled" : status;
+    const { error } = isPosOrder
+      ? await supabase.from("pos_orders").update({ fulfillment_status: posStatus }).eq("id", orderId)
+      : await supabase.from("orders").update({ status: toDbStatus(status) }).eq("id", orderId);
     if (error) {
       console.warn("Could not update Supabase order status. Updating locally instead.", error);
     }

@@ -34,6 +34,7 @@ export interface PosReceipt {
   customerName?: string;
   phone?: string;
   tableNumber?: string;
+  deliveryAddress?: string;
   orderType: PosOrderType;
   items: CartItem[];
   subtotal: number;
@@ -53,6 +54,7 @@ export interface HeldPosOrder {
   customerName?: string;
   phone?: string;
   tableNumber?: string;
+  deliveryAddress?: string;
   orderType: PosOrderType;
   discount: number;
   createdAt: string;
@@ -275,6 +277,7 @@ export async function createPosReceipt(receipt: PosReceipt) {
         customer_name: verifiedReceipt.customerName || null,
         customer_phone: verifiedReceipt.phone || null,
         table_number: verifiedReceipt.tableNumber || null,
+        delivery_address: verifiedReceipt.deliveryAddress || null,
         order_type: verifiedReceipt.orderType,
         subtotal: verifiedReceipt.subtotal,
         discount: verifiedReceipt.discount,
