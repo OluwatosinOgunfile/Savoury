@@ -126,13 +126,13 @@ export async function fetchAdminUserSessions(): Promise<AdminUserSession[]> {
   }));
 }
 
-export async function fetchAdminActivityEvents(): Promise<AdminActivityEvent[]> {
+export async function fetchAdminActivityEvents(limit = 30): Promise<AdminActivityEvent[]> {
   if (!isSupabaseConfigured || !supabase) return [];
   const { data, error } = await supabase
     .from("activity_events")
     .select("id, display_name, action, page, created_at")
     .order("created_at", { ascending: false })
-    .limit(30);
+    .limit(limit);
 
   if (error) {
     console.warn("Could not load activity events. Run supabase/admin-dashboard-live-data-patch.sql once.", error);

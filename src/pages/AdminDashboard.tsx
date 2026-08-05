@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
-import { Activity, BarChart3, CheckCircle2, Clock, ListChecks, PackagePlus, Star, Users, XCircle, type LucideIcon } from "lucide-react";
+import { Activity, ArrowRight, BarChart3, CheckCircle2, Clock, ListChecks, PackagePlus, Star, Users, XCircle, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
@@ -40,7 +40,7 @@ export function AdminDashboard() {
   const { data: menuCategories = categories } = useQuery({ queryKey: foodKeys.categories, queryFn: fetchCategories });
   const { data: customers = [] } = useQuery({ queryKey: adminDashboardKeys.customers, queryFn: fetchAdminCustomers });
   const { data: userSessions = [] } = useQuery({ queryKey: adminDashboardKeys.sessions, queryFn: fetchAdminUserSessions, refetchInterval: 30000 });
-  const { data: activityFeed = [] } = useQuery({ queryKey: adminDashboardKeys.activity, queryFn: fetchAdminActivityEvents, refetchInterval: 30000 });
+  const { data: activityFeed = [] } = useQuery({ queryKey: adminDashboardKeys.activity, queryFn: () => fetchAdminActivityEvents(), refetchInterval: 30000 });
   const { data: highlightedReviews = [] } = useQuery({ queryKey: adminDashboardKeys.reviews, queryFn: fetchAdminReviews });
   const { data: adminCoupons = [] } = useQuery({ queryKey: adminDashboardKeys.coupons, queryFn: fetchAdminCoupons });
   const { data: salesReps = [] } = useQuery({ queryKey: adminDashboardKeys.salesReps, queryFn: fetchAdminSalesRepresentatives });
@@ -346,7 +346,10 @@ export function AdminDashboard() {
                 <h2 className="text-xl font-black">User Activity Feed</h2>
                 <p className="mt-1 text-sm font-semibold text-zinc-500">Recent browsing, cart, checkout, and account actions.</p>
               </div>
-              <Activity className="h-8 w-8 text-savoury-primary" />
+              <div className="flex shrink-0 items-center gap-2">
+                <Activity className="h-8 w-8 text-savoury-primary" />
+                <Link to="/admin/activity"><Button size="sm" variant="outline">More Activity <ArrowRight className="h-4 w-4" /></Button></Link>
+              </div>
             </div>
             <div className="mt-5 grid gap-3">
               {activityFeed.length > 0 ? activityFeed.map((activity) => (

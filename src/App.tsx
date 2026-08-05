@@ -3,6 +3,7 @@ import { Route, Routes } from "react-router-dom";
 import { Layout } from "@/components/Layout";
 import { AccountPage } from "@/pages/AccountPage";
 import { AdminDashboard } from "@/pages/AdminDashboard";
+import { AdminActivityPage } from "@/pages/AdminActivityPage";
 import { AdminFoodFormPage } from "@/pages/AdminFoodFormPage";
 import { AdminManageMenuPage } from "@/pages/AdminManageMenuPage";
 import { AdminOrderDetailsPage } from "@/pages/AdminOrderDetailsPage";
@@ -64,6 +65,7 @@ export function App() {
         <Route path="pos" element={<RequireSalesRep><SalesRepPosPage /></RequireSalesRep>} />
         <Route path="kitchen" element={<RequireKitchen><KitchenDashboardPage /></RequireKitchen>} />
         <Route path="admin" element={<RequireAdmin><AdminDashboard /></RequireAdmin>} />
+        <Route path="admin/activity" element={<RequireAdmin><AdminActivityPage /></RequireAdmin>} />
         <Route path="admin/orders/:orderId" element={<RequireAdmin><AdminOrderDetailsPage /></RequireAdmin>} />
         <Route path="admin/sales-representatives/:repId" element={<RequireAdmin><AdminSalesRepActivityPage /></RequireAdmin>} />
         <Route path="admin/menu" element={<RequireAdmin><AdminManageMenuPage /></RequireAdmin>} />
