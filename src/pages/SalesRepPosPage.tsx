@@ -713,7 +713,9 @@ function ReceiptModal({ receipt, onClose }: { receipt: PosReceipt; onClose: () =
           </div>
           <div className="thermal-receipt mx-auto bg-white p-4 font-mono text-xs text-zinc-950">
             <div className="text-center">
-              <img src="/images/savoury-logo-tight.jpeg" alt="Savoury" className="mx-auto h-12 w-12 rounded-full object-cover" />
+              <span className="mx-auto block h-12 w-12 overflow-hidden rounded-full">
+                <img src="/images/savoury-logo-tight.jpeg" alt="Savoury" className="h-full w-full scale-[1.2] object-cover object-center" />
+              </span>
               <h3 className="mt-2 text-base font-black">Savoury</h3>
               <p>15 Adebayo Adeleke Street, Victoria Island, Lagos</p>
               <p>+234 812 345 6789</p>

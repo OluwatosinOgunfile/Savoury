@@ -29,9 +29,9 @@ export function Header({ darkMode, setDarkMode }: { darkMode: boolean; setDarkMo
   return (
     <header className="sticky top-0 z-40 border-b border-zinc-200 bg-white/95 shadow-sm backdrop-blur-xl transition-colors dark:border-white/8 dark:bg-[#141414]/95 dark:shadow-[0_1px_0_rgba(85,107,47,0.22)]">
       <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:gap-6 lg:px-8">
-        <Link to={isAuthenticated ? dashboardPath : "/"} aria-label="Savoury home" className="flex shrink-0 items-center gap-3">
-          <span className="grid h-12 w-12 place-items-center rounded-full bg-white p-1 shadow-sm ring-1 ring-zinc-200 transition-transform group-hover:scale-105 dark:ring-white/10">
-            <img src="/images/savoury-logo-tight.jpeg" alt="Savoury logo" className="h-full w-full rounded-full object-contain" />
+        <Link to={isAuthenticated ? dashboardPath : "/"} aria-label="Savoury home" className="group flex shrink-0 items-center gap-3">
+          <span className="grid h-12 w-12 place-items-center overflow-hidden rounded-full bg-white shadow-sm ring-1 ring-zinc-200 transition-transform group-hover:scale-105 dark:ring-white/10">
+            <img src="/images/savoury-logo-tight.jpeg" alt="Savoury logo" className="h-full w-full scale-[1.2] object-cover object-center" />
           </span>
           <span className="font-display text-xl font-bold tracking-tight text-zinc-950 dark:text-white">Savoury</span>
         </Link>
