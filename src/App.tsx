@@ -9,6 +9,7 @@ import { AdminManageMenuPage } from "@/pages/AdminManageMenuPage";
 import { AdminOrderDetailsPage } from "@/pages/AdminOrderDetailsPage";
 import { AdminSalesRepActivityPage } from "@/pages/AdminSalesRepActivityPage";
 import { AdminStaffActivityTimelinePage } from "@/pages/AdminStaffActivityTimelinePage";
+import { AdminStaffPosSalesPage } from "@/pages/AdminStaffPosSalesPage";
 import { AuthCallbackPage } from "@/pages/AuthCallbackPage";
 import { CartPage } from "@/pages/CartPage";
 import { RequireAdmin } from "@/components/RequireAdmin";
@@ -70,6 +71,7 @@ export function App() {
         <Route path="admin/orders/:orderId" element={<RequireAdmin><AdminOrderDetailsPage /></RequireAdmin>} />
         <Route path="admin/sales-representatives/:repId" element={<RequireAdmin><AdminSalesRepActivityPage /></RequireAdmin>} />
         <Route path="admin/sales-representatives/:repId/activity" element={<RequireAdmin><AdminStaffActivityTimelinePage /></RequireAdmin>} />
+        <Route path="admin/sales-representatives/:repId/sales" element={<RequireAdmin><AdminStaffPosSalesPage /></RequireAdmin>} />
         <Route path="admin/menu" element={<RequireAdmin><AdminManageMenuPage /></RequireAdmin>} />
         <Route path="admin/foods/new" element={<RequireAdmin><AdminFoodFormPage /></RequireAdmin>} />
         <Route path="admin/foods/:foodId/edit" element={<RequireAdmin><AdminFoodFormPage /></RequireAdmin>} />

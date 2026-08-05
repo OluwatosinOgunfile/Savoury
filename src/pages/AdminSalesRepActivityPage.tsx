@@ -85,7 +85,7 @@ export function AdminSalesRepActivityPage() {
               <table className="w-full min-w-[620px] text-left text-sm">
                 <thead className="text-xs uppercase text-zinc-400"><tr><th className="py-3">Receipt</th><th>Customer</th><th>Type</th><th>Payment</th><th>Date</th><th className="text-right">Total</th></tr></thead>
                 <tbody>
-                  {data.sales.map((sale) => (
+                  {data.sales.slice(0, 10).map((sale) => (
                     <tr key={sale.id} className="border-t border-zinc-100 dark:border-white/10">
                       <td className="py-4 font-black">{sale.receiptNumber}<p className="text-xs capitalize text-zinc-500">{sale.status}</p></td>
                       <td>{sale.customerName || "Walk-in"}</td><td className="capitalize">{sale.orderType.replace(/_/g, " ")}</td><td className="capitalize">{sale.paymentMethod}</td><td>{formatDate(sale.createdAt)}</td><td className="text-right font-black text-savoury-primary">{formatCurrency(sale.total)}</td>
@@ -95,6 +95,7 @@ export function AdminSalesRepActivityPage() {
               </table>
               {!data.sales.length && <Empty text="No POS sales have been completed by this staff member." />}
             </div>
+            {data.sales.length > 0 && <Link className="mt-4 block" to={`/admin/sales-representatives/${rep.id}/sales`}><Button className="w-full" variant="outline">More Sales <ArrowRight className="h-4 w-4" /></Button></Link>}
           </CardContent>
         </Card>
       </section>
