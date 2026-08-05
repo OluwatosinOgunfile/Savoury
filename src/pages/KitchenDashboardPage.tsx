@@ -21,23 +21,37 @@ export function KitchenDashboardPage() {
   const [message, setMessage] = useState("");
   const [updating, setUpdating] = useState<string | null>(null);
   const [orderSoundEnabled, setOrderSoundEnabled] = useState(() => localStorage.getItem("savoury-kitchen-order-sound") !== "false");
+  const [audioReady, setAudioReady] = useState(false);
   const audioContextRef = useRef<AudioContext | null>(null);
+  const pendingOrderTone = useRef(false);
   const knownOrderIds = useRef(new Set<string>());
   const ordersInitialized = useRef(false);
+  const dashboardOpenedAt = useRef(Date.now());
   const { data: orders = [], isLoading, isFetched, error } = useQuery({ queryKey: ["kitchen-orders"], queryFn: fetchKitchenOrders, refetchInterval: 5000 });
 
   const unlockOrderSound = useCallback(async () => {
-    if (!orderSoundEnabled) return;
-    audioContextRef.current ||= new AudioContext();
-    if (audioContextRef.current.state === "suspended") await audioContextRef.current.resume();
+    if (!orderSoundEnabled) return false;
+    try {
+      audioContextRef.current ||= new AudioContext();
+      if (audioContextRef.current.state === "suspended") await audioContextRef.current.resume();
+      const ready = audioContextRef.current.state === "running";
+      setAudioReady(ready);
+      return ready;
+    } catch {
+      setAudioReady(false);
+      return false;
+    }
   }, [orderSoundEnabled]);
 
   const playOrderTone = useCallback(async () => {
-    if (!orderSoundEnabled) return;
+    if (!orderSoundEnabled) return false;
     try {
-      await unlockOrderSound();
+      const unlocked = await unlockOrderSound();
       const context = audioContextRef.current;
-      if (!context || context.state !== "running") return;
+      if (!unlocked || !context || context.state !== "running") {
+        pendingOrderTone.current = true;
+        return false;
+      }
       const start = context.currentTime;
       const gain = context.createGain();
       gain.gain.setValueAtTime(0.0001, start);
@@ -55,8 +69,12 @@ export function KitchenDashboardPage() {
         oscillator.start(tone.start);
         oscillator.stop(tone.stop);
       });
+      pendingOrderTone.current = false;
+      return true;
     } catch {
-      // Browser audio becomes available after the kitchen user interacts with this page.
+      pendingOrderTone.current = true;
+      setAudioReady(false);
+      return false;
     }
   }, [orderSoundEnabled, unlockOrderSound]);
 
@@ -67,14 +85,17 @@ export function KitchenDashboardPage() {
 
   useEffect(() => {
     if (!orderSoundEnabled) return;
-    const unlock = () => void unlockOrderSound();
+    const unlock = async () => {
+      const ready = await unlockOrderSound();
+      if (ready && pendingOrderTone.current) void playOrderTone();
+    };
     window.addEventListener("pointerdown", unlock, { once: true });
     window.addEventListener("keydown", unlock, { once: true });
     return () => {
       window.removeEventListener("pointerdown", unlock);
       window.removeEventListener("keydown", unlock);
     };
-  }, [orderSoundEnabled, unlockOrderSound]);
+  }, [orderSoundEnabled, playOrderTone, unlockOrderSound]);
 
   useEffect(() => {
     if (!isFetched) return;
@@ -82,6 +103,12 @@ export function KitchenDashboardPage() {
     if (!ordersInitialized.current) {
       ordersInitialized.current = true;
       knownOrderIds.current = currentIds;
+      const justReceived = orders.filter((order) => new Date(order.createdAt).getTime() >= dashboardOpenedAt.current - 2000);
+      if (justReceived.length) {
+        const latest = justReceived[justReceived.length - 1];
+        setMessage(`New ${latest.source.toUpperCase()} order ${latest.number} received.`);
+        void playOrderTone();
+      }
       return;
     }
 
@@ -140,23 +167,10 @@ export function KitchenDashboardPage() {
         <div className="mx-auto flex max-w-[1500px] flex-col justify-between gap-4 md:flex-row md:items-center">
           <div className="flex items-center gap-3"><span className="grid h-11 w-11 place-items-center rounded-xl bg-savoury-primary text-white"><ChefHat className="h-6 w-6" /></span><div><p className="text-xs font-black uppercase tracking-[0.2em] text-savoury-primary">Kitchen operations</p><h1 className="text-2xl font-black">Preparation Queue</h1><p className="text-sm font-semibold text-zinc-500">{profile?.fullName} · {new Date(now).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}</p></div></div>
           <div className="flex flex-wrap gap-2">
-            <Button
-              variant="outline"
-              onClick={() => {
-                const next = !orderSoundEnabled;
-                setOrderSoundEnabled(next);
-                localStorage.setItem("savoury-kitchen-order-sound", String(next));
-                if (next) {
-                  audioContextRef.current ||= new AudioContext();
-                  void audioContextRef.current.resume();
-                }
-                setMessage(next ? "New-order sound enabled." : "New-order sound muted.");
-              }}
-              title={orderSoundEnabled ? "Mute new-order sound" : "Enable new-order sound"}
-            >
-              {orderSoundEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />} {orderSoundEnabled ? "Sound on" : "Sound off"}
-            </Button>
-            {orderSoundEnabled && <Button variant="outline" onClick={() => { void playOrderTone(); setMessage("Playing the kitchen order test chime."); }}><BellRing className="h-4 w-4" /> Test chime</Button>}
+            {!orderSoundEnabled && <Button variant="outline" onClick={() => { setOrderSoundEnabled(true); localStorage.setItem("savoury-kitchen-order-sound", "true"); setMessage("Sound enabled. Click Enable order alerts to activate audio."); }}><VolumeX className="h-4 w-4" /> Sound off</Button>}
+            {orderSoundEnabled && !audioReady && <Button onClick={async () => { const ready = await unlockOrderSound(); if (ready) { await playOrderTone(); setMessage("Kitchen order alerts are enabled."); } else { setMessage("The browser blocked audio. Check this tab's sound permission."); } }}><BellRing className="h-4 w-4" /> Enable order alerts</Button>}
+            {orderSoundEnabled && audioReady && <Button variant="outline" onClick={() => { setOrderSoundEnabled(false); setAudioReady(false); localStorage.setItem("savoury-kitchen-order-sound", "false"); setMessage("New-order sound muted."); }}><Volume2 className="h-4 w-4" /> Sound on</Button>}
+            {orderSoundEnabled && audioReady && <Button variant="outline" onClick={() => { void playOrderTone(); setMessage("Playing the kitchen order test chime."); }}><BellRing className="h-4 w-4" /> Test chime</Button>}
             <Button variant="outline" onClick={signOut}><LogOut className="h-4 w-4" /> Sign out</Button>
           </div>
         </div>
