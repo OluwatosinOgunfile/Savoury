@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { getPostLoginPath, sendPasswordReset, signInWithEmail, signInWithGoogle } from "@/services/authService";
+import { primeAlertAudio } from "@/services/alertSound";
 
 const loginSchema = z.object({
   email: z.string().email("Enter a valid email address."),
@@ -24,6 +25,7 @@ export function LoginPage() {
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
+    void primeAlertAudio();
     setError("");
     setMessage("");
     const parsed = loginSchema.safeParse(form);
