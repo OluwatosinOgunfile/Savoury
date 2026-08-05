@@ -112,7 +112,7 @@ export function SalesRepPosPage() {
       const now = context.currentTime;
       const gain = context.createGain();
       gain.gain.setValueAtTime(0.0001, now);
-      gain.gain.exponentialRampToValueAtTime(0.18, now + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.5, now + 0.02);
       gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.55);
       gain.connect(context.destination);
 
