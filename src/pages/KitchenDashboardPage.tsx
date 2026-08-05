@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChefHat, Clock3, LogOut, MonitorCheck, RefreshCw, UtensilsCrossed } from "lucide-react";
+import { BellRing, ChefHat, Clock3, LogOut, MonitorCheck, RefreshCw, UtensilsCrossed, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
 import { useAuth } from "@/hooks/useAuth";
+import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { fetchKitchenOrders, updateKitchenOrderStatus, type KitchenOrder, type KitchenOrderStatus } from "@/services/kitchenService";
 
 const stages: Array<{ id: KitchenOrderStatus; title: string; subtitle: string }> = [
@@ -19,12 +20,104 @@ export function KitchenDashboardPage() {
   const [now, setNow] = useState(Date.now());
   const [message, setMessage] = useState("");
   const [updating, setUpdating] = useState<string | null>(null);
-  const { data: orders = [], isLoading, error, refetch } = useQuery({ queryKey: ["kitchen-orders"], queryFn: fetchKitchenOrders, refetchInterval: 10000 });
+  const [orderSoundEnabled, setOrderSoundEnabled] = useState(() => localStorage.getItem("savoury-kitchen-order-sound") !== "false");
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const knownOrderIds = useRef(new Set<string>());
+  const ordersInitialized = useRef(false);
+  const { data: orders = [], isLoading, isFetched, error, refetch } = useQuery({ queryKey: ["kitchen-orders"], queryFn: fetchKitchenOrders, refetchInterval: 5000 });
+
+  const unlockOrderSound = useCallback(async () => {
+    if (!orderSoundEnabled) return;
+    audioContextRef.current ||= new AudioContext();
+    if (audioContextRef.current.state === "suspended") await audioContextRef.current.resume();
+  }, [orderSoundEnabled]);
+
+  const playOrderTone = useCallback(async () => {
+    if (!orderSoundEnabled) return;
+    try {
+      await unlockOrderSound();
+      const context = audioContextRef.current;
+      if (!context || context.state !== "running") return;
+      const start = context.currentTime;
+      const gain = context.createGain();
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(0.7, start + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.72);
+      gain.connect(context.destination);
+      [
+        { frequency: 659, start, stop: start + 0.28 },
+        { frequency: 880, start: start + 0.31, stop: start + 0.69 },
+      ].forEach((tone) => {
+        const oscillator = context.createOscillator();
+        oscillator.type = "sine";
+        oscillator.frequency.setValueAtTime(tone.frequency, tone.start);
+        oscillator.connect(gain);
+        oscillator.start(tone.start);
+        oscillator.stop(tone.stop);
+      });
+    } catch {
+      // Browser audio becomes available after the kitchen user interacts with this page.
+    }
+  }, [orderSoundEnabled, unlockOrderSound]);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 30000);
     return () => window.clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    if (!orderSoundEnabled) return;
+    const unlock = () => void unlockOrderSound();
+    window.addEventListener("pointerdown", unlock, { once: true });
+    window.addEventListener("keydown", unlock, { once: true });
+    return () => {
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("keydown", unlock);
+    };
+  }, [orderSoundEnabled, unlockOrderSound]);
+
+  useEffect(() => {
+    if (!isFetched) return;
+    const currentIds = new Set(orders.map((order) => `${order.source}-${order.id}`));
+    if (!ordersInitialized.current) {
+      ordersInitialized.current = true;
+      knownOrderIds.current = currentIds;
+      return;
+    }
+
+    const newOrders = orders.filter((order) => !knownOrderIds.current.has(`${order.source}-${order.id}`));
+    currentIds.forEach((id) => knownOrderIds.current.add(id));
+    if (newOrders.length) {
+      const latest = newOrders[newOrders.length - 1];
+      setMessage(newOrders.length === 1 ? `New ${latest.source.toUpperCase()} order ${latest.number} received.` : `${newOrders.length} new orders received.`);
+      void playOrderTone();
+    }
+  }, [isFetched, orders, playOrderTone]);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured || !supabase || !profile?.id) return;
+    const client = supabase;
+    const announceRealtimeOrder = (source: "app" | "pos", payload: { new: Record<string, unknown> }) => {
+      const id = String(payload.new.id || "");
+      if (!id) return;
+      const key = `${source}-${id}`;
+      if (!knownOrderIds.current.has(key)) {
+        knownOrderIds.current.add(key);
+        const number = source === "pos" ? String(payload.new.receipt_number || "new POS order") : `APP-${id.slice(0, 8).toUpperCase()}`;
+        setMessage(`New ${source.toUpperCase()} order ${number} received.`);
+        void playOrderTone();
+      }
+      void queryClient.invalidateQueries({ queryKey: ["kitchen-orders"] });
+    };
+    const channel = client
+      .channel(`kitchen-new-orders-${profile.id}`)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "orders" }, (payload) => announceRealtimeOrder("app", payload))
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "pos_orders" }, (payload) => announceRealtimeOrder("pos", payload))
+      .subscribe();
+    return () => {
+      void client.removeChannel(channel);
+    };
+  }, [playOrderTone, profile?.id, queryClient]);
 
   const counts = useMemo(() => Object.fromEntries(stages.map((stage) => [stage.id, orders.filter((order) => order.status === stage.id).length])), [orders]);
   const moveOrder = async (order: KitchenOrder, status: "preparing" | "ready" | "out_for_delivery") => {
@@ -46,7 +139,27 @@ export function KitchenDashboardPage() {
       <section className="border-b border-zinc-200 bg-white px-4 py-4 dark:border-white/10 dark:bg-[#151515]">
         <div className="mx-auto flex max-w-[1500px] flex-col justify-between gap-4 md:flex-row md:items-center">
           <div className="flex items-center gap-3"><span className="grid h-11 w-11 place-items-center rounded-xl bg-savoury-primary text-white"><ChefHat className="h-6 w-6" /></span><div><p className="text-xs font-black uppercase tracking-[0.2em] text-savoury-primary">Kitchen operations</p><h1 className="text-2xl font-black">Preparation Queue</h1><p className="text-sm font-semibold text-zinc-500">{profile?.fullName} · {new Date(now).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}</p></div></div>
-          <div className="flex gap-2"><Button variant="outline" onClick={() => refetch()}><RefreshCw className="h-4 w-4" /> Refresh</Button><Button variant="outline" onClick={signOut}><LogOut className="h-4 w-4" /> Sign out</Button></div>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                const next = !orderSoundEnabled;
+                setOrderSoundEnabled(next);
+                localStorage.setItem("savoury-kitchen-order-sound", String(next));
+                if (next) {
+                  audioContextRef.current ||= new AudioContext();
+                  void audioContextRef.current.resume();
+                }
+                setMessage(next ? "New-order sound enabled." : "New-order sound muted.");
+              }}
+              title={orderSoundEnabled ? "Mute new-order sound" : "Enable new-order sound"}
+            >
+              {orderSoundEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />} {orderSoundEnabled ? "Sound on" : "Sound off"}
+            </Button>
+            {orderSoundEnabled && <Button variant="outline" onClick={() => { void playOrderTone(); setMessage("Playing the kitchen order test chime."); }}><BellRing className="h-4 w-4" /> Test chime</Button>}
+            <Button variant="outline" onClick={() => refetch()}><RefreshCw className="h-4 w-4" /> Refresh</Button>
+            <Button variant="outline" onClick={signOut}><LogOut className="h-4 w-4" /> Sign out</Button>
+          </div>
         </div>
       </section>
 
