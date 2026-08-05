@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { BellRing, ChefHat, Clock3, LogOut, MonitorCheck, RefreshCw, UtensilsCrossed, Volume2, VolumeX } from "lucide-react";
+import { BellRing, ChefHat, Clock3, LogOut, MonitorCheck, UtensilsCrossed, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
 import { useAuth } from "@/hooks/useAuth";
@@ -24,7 +24,7 @@ export function KitchenDashboardPage() {
   const audioContextRef = useRef<AudioContext | null>(null);
   const knownOrderIds = useRef(new Set<string>());
   const ordersInitialized = useRef(false);
-  const { data: orders = [], isLoading, isFetched, error, refetch } = useQuery({ queryKey: ["kitchen-orders"], queryFn: fetchKitchenOrders, refetchInterval: 5000 });
+  const { data: orders = [], isLoading, isFetched, error } = useQuery({ queryKey: ["kitchen-orders"], queryFn: fetchKitchenOrders, refetchInterval: 5000 });
 
   const unlockOrderSound = useCallback(async () => {
     if (!orderSoundEnabled) return;
@@ -157,7 +157,6 @@ export function KitchenDashboardPage() {
               {orderSoundEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />} {orderSoundEnabled ? "Sound on" : "Sound off"}
             </Button>
             {orderSoundEnabled && <Button variant="outline" onClick={() => { void playOrderTone(); setMessage("Playing the kitchen order test chime."); }}><BellRing className="h-4 w-4" /> Test chime</Button>}
-            <Button variant="outline" onClick={() => refetch()}><RefreshCw className="h-4 w-4" /> Refresh</Button>
             <Button variant="outline" onClick={signOut}><LogOut className="h-4 w-4" /> Sign out</Button>
           </div>
         </div>
