@@ -28,29 +28,29 @@ export function MenuPage() {
   }, [setFilters, startingCategory, startingSearch]);
 
   return (
-    <main className="app-container py-8 text-white">
+    <main className="app-container py-8 text-zinc-950 dark:text-white">
       <div className="mb-6 flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
         <div>
           <p className="font-black uppercase text-savoury-primary">Menu</p>
           <h1 className="section-title">Search, filter, and order fast</h1>
-          <p className="mt-2 text-zinc-400">Search by meal name, category, price, and popularity. Filter by price, category, rating, preparation time, popular, and newest.</p>
+          <p className="mt-2 text-zinc-600 dark:text-zinc-400">Search by meal name, category, price, and popularity. Filter by price, category, rating, preparation time, popular, and newest.</p>
         </div>
         <Button variant="outline">
           <SlidersHorizontal className="h-4 w-4" />
           {results.length} meals
         </Button>
       </div>
-      <Card className="mb-6 border-white/10 bg-[#1d1d1d]">
+      <Card className="mb-6 border-zinc-200 bg-white dark:border-white/10 dark:bg-[#1d1d1d]">
         <CardContent className="grid gap-4 lg:grid-cols-[1.2fr_repeat(4,1fr)]">
           <label className="relative">
             <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-400" />
             <Input className="pl-11" placeholder="Search meals, categories, prices..." value={filters.query} onChange={(event) => setFilters({ ...filters, query: event.target.value })} />
           </label>
-          <select className="h-12 rounded-xl border border-white/10 bg-[#101010] px-4 text-sm text-white" value={filters.category} onChange={(event) => setFilters({ ...filters, category: event.target.value as "All" | FoodCategory })}>
+          <select className="h-12 rounded-xl border border-zinc-200 bg-white px-4 text-sm text-zinc-950 outline-none focus:border-savoury-primary focus:ring-4 focus:ring-savoury-primary/10 dark:border-white/10 dark:bg-[#101010] dark:text-white" value={filters.category} onChange={(event) => setFilters({ ...filters, category: event.target.value as "All" | FoodCategory })}>
             <option>All</option>
             {menuCategories.map((category) => <option key={category.id}>{category.name}</option>)}
           </select>
-          <select className="h-12 rounded-xl border border-white/10 bg-[#101010] px-4 text-sm text-white" value={filters.sort} onChange={(event) => setFilters({ ...filters, sort: event.target.value as typeof filters.sort })}>
+          <select className="h-12 rounded-xl border border-zinc-200 bg-white px-4 text-sm text-zinc-950 outline-none focus:border-savoury-primary focus:ring-4 focus:ring-savoury-primary/10 dark:border-white/10 dark:bg-[#101010] dark:text-white" value={filters.sort} onChange={(event) => setFilters({ ...filters, sort: event.target.value as typeof filters.sort })}>
             <option value="popular">Popular</option>
             <option value="newest">Newest</option>
             <option value="price">Lowest price</option>

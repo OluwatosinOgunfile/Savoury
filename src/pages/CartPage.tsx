@@ -19,12 +19,12 @@ export function CartPage() {
   };
 
   return (
-    <main className="app-container grid gap-6 py-8 text-white lg:grid-cols-[1fr_380px]">
+    <main className="app-container grid gap-6 py-8 text-zinc-950 dark:text-white lg:grid-cols-[1fr_380px]">
       <section>
         <h1 className="section-title">Shopping Cart</h1>
         <div className="mt-5 space-y-4">
           {cart.items.length === 0 ? (
-            <Card className="dark-surface"><CardContent className="p-8 text-center text-zinc-400">Your cart is empty. Fresh meals are waiting.</CardContent></Card>
+            <Card className="dark-surface"><CardContent className="p-8 text-center text-zinc-600 dark:text-zinc-400">Your cart is empty. Fresh meals are waiting.</CardContent></Card>
           ) : (
             cart.items.map(({ food, quantity }) => {
               const stock = food.stockQuantity ?? 50;
@@ -33,8 +33,8 @@ export function CartPage() {
                   <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-center">
                     <img src={food.image} alt={food.name} className="h-28 w-full rounded-xl object-cover sm:w-32" />
                     <div className="flex-1">
-                      <h2 className="font-black text-white">{food.name}</h2>
-                      <p className="mt-1 text-sm text-zinc-400">{food.category} | {food.prepTime} min</p>
+                      <h2 className="font-black text-zinc-950 dark:text-white">{food.name}</h2>
+                      <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">{food.category} | {food.prepTime} min</p>
                       <p className="mt-2 font-black text-savoury-primary">{formatCurrency(food.price)}</p>
                       <p className={`mt-1 text-xs font-black ${stock <= 0 ? "text-red-400" : "text-emerald-400"}`}>{stock <= 0 ? "Out of stock" : `${stock} in stock`}</p>
                     </div>
@@ -64,7 +64,7 @@ export function CartPage() {
             <SummaryLine label="Delivery fee" value={formatCurrency(cart.deliveryFee)} />
             <SummaryLine label="Tax" value={formatCurrency(cart.tax)} />
             <SummaryLine label="Discount" value={`-${formatCurrency(cart.discount)}`} />
-            <div className="border-t border-white/10 pt-4">
+            <div className="border-t border-zinc-200 pt-4 dark:border-white/10">
               <SummaryLine label="Total" value={formatCurrency(cart.total)} strong />
             </div>
             {hasStockIssue && <p className="text-sm font-bold text-red-400">Adjust cart quantities before checkout.</p>}
@@ -77,5 +77,5 @@ export function CartPage() {
 }
 
 function SummaryLine({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
-  return <div className={`flex items-center justify-between ${strong ? "text-lg font-black text-white" : "text-sm text-zinc-400"}`}><span>{label}</span><span>{value}</span></div>;
+  return <div className={`flex items-center justify-between ${strong ? "text-lg font-black text-zinc-950 dark:text-white" : "text-sm text-zinc-600 dark:text-zinc-400"}`}><span>{label}</span><span>{value}</span></div>;
 }

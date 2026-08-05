@@ -28,12 +28,24 @@ import { TermsPage } from "@/pages/TermsPage";
 import { TrackingPage } from "@/pages/TrackingPage";
 
 export function App() {
-  const [darkMode, setDarkMode] = useState(() => localStorage.getItem("savoury-theme") !== "light");
+  const [darkMode, setDarkMode] = useState(() => {
+    const savedTheme = localStorage.getItem("savoury-theme");
+    return savedTheme ? savedTheme === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
+  });
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", darkMode);
     localStorage.setItem("savoury-theme", darkMode ? "dark" : "light");
   }, [darkMode]);
+
+  useEffect(() => {
+    const syncTheme = (event: Event) => {
+      const selectedTheme = (event as CustomEvent<"light" | "dark">).detail;
+      setDarkMode(selectedTheme === "dark");
+    };
+    window.addEventListener("savoury-theme-change", syncTheme);
+    return () => window.removeEventListener("savoury-theme-change", syncTheme);
+  }, []);
 
   return (
     <Routes>

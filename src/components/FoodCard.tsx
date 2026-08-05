@@ -31,7 +31,7 @@ export function FoodCard({ food, compact = false }: { food: Food; compact?: bool
 
   return (
     <motion.article initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} whileHover={{ y: -4 }} transition={{ duration: 0.22 }}>
-      <Card className="group h-full overflow-hidden border-white/10 bg-[#242424]">
+      <Card className="group h-full overflow-hidden border-zinc-200 bg-white dark:border-white/10 dark:bg-[#242424]">
         <div className={compact ? "relative h-36 overflow-hidden" : "relative h-48 overflow-hidden"}>
           <Link to={`/food/${food.slug}`} className="block h-full">
             <img src={imageSrc} alt={food.name} loading="lazy" onError={() => setImageSrc("/images/savoury-hero.png")} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
@@ -51,14 +51,14 @@ export function FoodCard({ food, compact = false }: { food: Food; compact?: bool
         <div className="space-y-3 p-4">
           <div>
             <div className="flex items-start justify-between gap-3">
-              <Link to={`/food/${food.slug}`} className="text-base font-black text-white hover:text-savoury-secondary">
+              <Link to={`/food/${food.slug}`} className="text-base font-black text-zinc-950 hover:text-savoury-primary dark:text-white dark:hover:text-savoury-secondary">
                 {food.name}
               </Link>
               <span className="font-black text-savoury-primary">{formatCurrency(food.price)}</span>
             </div>
-            <p className="mt-1 line-clamp-2 text-sm text-zinc-400">{food.description}</p>
+            <p className="mt-1 line-clamp-2 text-sm text-zinc-600 dark:text-zinc-400">{food.description}</p>
           </div>
-          <div className="flex items-center justify-between gap-3 text-sm text-zinc-400">
+          <div className="flex items-center justify-between gap-3 text-sm text-zinc-500 dark:text-zinc-400">
             <span className="inline-flex items-center gap-1">
               <Star className="h-4 w-4 fill-savoury-secondary stroke-savoury-secondary" />
               {food.rating} ({food.reviews})
@@ -68,7 +68,7 @@ export function FoodCard({ food, compact = false }: { food: Food; compact?: bool
               {food.prepTime} min
             </span>
           </div>
-          <p className={`text-xs font-black ${outOfStock ? "text-red-400" : "text-emerald-400"}`}>
+          <p className={`text-xs font-black ${outOfStock ? "text-red-600 dark:text-red-400" : "text-emerald-700 dark:text-emerald-400"}`}>
             {outOfStock ? "Out of stock" : `${stock} in stock`}
           </p>
           <Button className="w-full" onClick={() => addItem(food)} disabled={outOfStock}>

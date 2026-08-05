@@ -47,16 +47,16 @@ export function FoodDetailsPage() {
   };
 
   return (
-    <main className="app-container py-8 text-white">
+    <main className="app-container py-8 text-zinc-950 dark:text-white">
       <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-        <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="overflow-hidden rounded-2xl border border-white/10 bg-[#202020] shadow-premium">
+        <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-premium dark:border-white/10 dark:bg-[#202020]">
           <img src={imageSrc} alt={food.name} onError={() => setImageSrc("/images/savoury-hero.png")} className="h-[360px] w-full object-cover lg:h-[560px]" />
         </motion.div>
         <div className="space-y-5">
           <div>
             <Badge>{food.category}</Badge>
-            <h1 className="mt-4 text-3xl font-black tracking-tight text-white md:text-4xl">{food.name}</h1>
-            <p className="mt-3 text-zinc-400">{food.description}</p>
+            <h1 className="mt-4 text-3xl font-black tracking-tight text-zinc-950 dark:text-white md:text-4xl">{food.name}</h1>
+            <p className="mt-3 text-zinc-600 dark:text-zinc-400">{food.description}</p>
             <p className={`mt-3 text-sm font-black ${outOfStock ? "text-red-400" : "text-emerald-400"}`}>
               {outOfStock ? "Out of stock" : `${stock} in stock`}
             </p>
@@ -68,9 +68,9 @@ export function FoodDetailsPage() {
           </div>
           <Card className="dark-surface">
             <CardContent>
-              <h2 className="font-black text-white">Ingredients</h2>
+              <h2 className="font-black text-zinc-950 dark:text-white">Ingredients</h2>
               <div className="mt-3 flex flex-wrap gap-2">
-                {food.ingredients.map((ingredient) => <span key={ingredient} className="rounded-full bg-white/10 px-3 py-1 text-sm font-bold text-zinc-200">{ingredient}</span>)}
+                {food.ingredients.map((ingredient) => <span key={ingredient} className="rounded-full bg-zinc-100 px-3 py-1 text-sm font-bold text-zinc-700 dark:bg-white/10 dark:text-zinc-200">{ingredient}</span>)}
               </div>
             </CardContent>
           </Card>
@@ -82,7 +82,7 @@ export function FoodDetailsPage() {
               </div>
               <div className="flex items-center gap-3">
                 <Button variant="outline" size="icon" onClick={() => setQuantity(Math.max(1, quantity - 1))} disabled={outOfStock}>-</Button>
-                <span className="grid h-11 w-14 place-items-center rounded-xl bg-white/10 font-black">{quantity}</span>
+                <span className="grid h-11 w-14 place-items-center rounded-xl bg-zinc-100 font-black dark:bg-white/10">{quantity}</span>
                 <Button variant="outline" size="icon" onClick={() => setQuantity(Math.min(stock, quantity + 1))} disabled={outOfStock || quantity >= stock}>+</Button>
                 <Button className="flex-1" onClick={() => addItem(food, quantity)} disabled={outOfStock}>{outOfStock ? "Out of stock" : "Add to cart"}</Button>
               </div>
@@ -97,12 +97,12 @@ export function FoodDetailsPage() {
             <h2 className="section-title">Customer Reviews</h2>
             <div className="mt-4 space-y-4">
               {foodReviews.map((review) => (
-                <div key={review.id} className="rounded-xl border border-white/10 bg-[#171717] p-4">
+                <div key={review.id} className="rounded-xl border border-zinc-200 bg-zinc-50 p-4 dark:border-white/10 dark:bg-[#171717]">
                   <div className="flex items-center justify-between">
                     <strong>{review.user}</strong>
                     <span className="font-bold text-savoury-primary">{review.rating}/5</span>
                   </div>
-                  <p className="mt-2 text-sm text-zinc-400">{review.comment}</p>
+                  <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">{review.comment}</p>
                   <button className="mt-2 text-sm font-bold text-savoury-primary">{review.helpful} found helpful</button>
                 </div>
               ))}
@@ -129,7 +129,7 @@ function Stat({ icon: Icon, label, value }: { icon: LucideIcon; label: string; v
       <CardContent className="p-4">
         <Icon className="h-5 w-5 text-savoury-primary" />
         <p className="mt-2 text-xs font-bold uppercase text-zinc-400">{label}</p>
-        <p className="font-black text-white">{value}</p>
+        <p className="font-black text-zinc-950 dark:text-white">{value}</p>
       </CardContent>
     </Card>
   );

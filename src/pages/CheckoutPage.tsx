@@ -143,7 +143,7 @@ export function CheckoutPage() {
           <CardContent className="space-y-6 p-5 md:p-6">
             <div>
               <h2 className="text-xl font-black">Contact details</h2>
-              <p className="mt-1 text-sm text-zinc-400">We use this to confirm your order and reach you quickly.</p>
+              <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">We use this to confirm your order and reach you quickly.</p>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <Input placeholder="Customer name" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} />
@@ -155,9 +155,9 @@ export function CheckoutPage() {
           <CardContent className="space-y-6 p-5 md:p-6">
             <div>
               <h2 className="text-xl font-black">Fulfillment</h2>
-              <p className="mt-1 text-sm text-zinc-400">Choose delivery, pickup, or dining in at the restaurant.</p>
+              <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">Choose delivery, pickup, or dining in at the restaurant.</p>
             </div>
-            <div className="grid gap-2 rounded-2xl border border-white/10 bg-[#101010] p-2 sm:grid-cols-3">
+            <div className="grid gap-2 rounded-2xl border border-zinc-200 bg-zinc-50 p-2 dark:border-white/10 dark:bg-[#101010] sm:grid-cols-3">
               <FulfillmentButton
                 active={deliveryMode === "delivery"}
                 icon={Truck}
@@ -181,8 +181,8 @@ export function CheckoutPage() {
               />
             </div>
             {deliveryMode === "delivery" && (
-              <div className="rounded-2xl border border-white/10 bg-[#101010] p-4">
-                <label className="mb-3 flex items-center gap-2 text-sm font-black text-zinc-200">
+              <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-white/10 dark:bg-[#101010]">
+                <label className="mb-3 flex items-center gap-2 text-sm font-black text-zinc-800 dark:text-zinc-200">
                   <MapPin size={18} className="text-savoury-secondary" />
                   Delivery address
                 </label>
@@ -197,7 +197,7 @@ export function CheckoutPage() {
                         className={`rounded-full border px-3 py-2 text-xs font-bold transition ${
                           form.address === address.line1
                             ? "border-savoury-secondary bg-savoury-secondary text-zinc-950"
-                            : "border-white/10 bg-white/5 text-zinc-300 hover:border-savoury-primary hover:text-white"
+                            : "border-zinc-200 bg-white text-zinc-700 hover:border-savoury-primary hover:text-savoury-primary dark:border-white/10 dark:bg-white/5 dark:text-zinc-300 dark:hover:text-white"
                         }`}
                       >
                         {address.label}
@@ -208,8 +208,8 @@ export function CheckoutPage() {
               </div>
             )}
             {deliveryMode !== "delivery" && (
-              <div className="rounded-2xl border border-white/10 bg-[#101010] p-4">
-                <label className="mb-3 flex items-center gap-2 text-sm font-black text-zinc-200">
+              <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-white/10 dark:bg-[#101010]">
+                <label className="mb-3 flex items-center gap-2 text-sm font-black text-zinc-800 dark:text-zinc-200">
                   <CalendarClock size={18} className="text-savoury-secondary" />
                   Time
                 </label>
@@ -222,7 +222,7 @@ export function CheckoutPage() {
                       className={`rounded-xl border px-4 py-3 text-left transition ${
                         form.fulfillmentTime === option.id
                           ? "border-savoury-secondary bg-savoury-secondary text-zinc-950"
-                          : "border-white/10 bg-white/5 text-zinc-300 hover:border-savoury-primary hover:text-white"
+                          : "border-zinc-200 bg-white text-zinc-700 hover:border-savoury-primary hover:text-savoury-primary dark:border-white/10 dark:bg-white/5 dark:text-zinc-300 dark:hover:text-white"
                       }`}
                     >
                       <span className="block text-sm font-black">{option.label}</span>
@@ -239,7 +239,7 @@ export function CheckoutPage() {
           <CardContent className="space-y-6 p-5 md:p-6">
             <div>
               <h2 className="text-xl font-black">Payment Method</h2>
-              <p className="mt-1 text-sm text-zinc-400">Payment modules are ready for live gateway keys when you connect them.</p>
+              <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">Payment modules are ready for live gateway keys when you connect them.</p>
             </div>
             <div className="grid gap-3 sm:grid-cols-3">
               {deliveryMode !== "delivery" && <PaymentCard active={paymentMethod === "cash"} icon={Banknote} title="Cash" onClick={() => setPaymentMethod("cash")} />}
@@ -248,17 +248,17 @@ export function CheckoutPage() {
             </div>
           </CardContent>
         </Card>
-        {error && <p className="rounded-2xl border border-red-500/20 bg-red-500/10 p-4 font-bold text-red-300">{error}</p>}
+        {error && <p className="rounded-2xl border border-red-500/20 bg-red-500/10 p-4 font-bold text-red-700 dark:text-red-300">{error}</p>}
       </section>
       <aside className="h-fit lg:sticky lg:top-24">
         <Card className="dark-surface">
           <CardContent className="space-y-5 p-5 md:p-6">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-black">Order Summary</h2>
-              <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-black text-zinc-300">{cart.itemCount} items</span>
+              <span className="rounded-full bg-zinc-100 px-3 py-1 text-xs font-black text-zinc-700 dark:bg-white/10 dark:text-zinc-300">{cart.itemCount} items</span>
             </div>
             {cart.items.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-white/10 p-5 text-center text-sm text-zinc-400">
+              <div className="rounded-xl border border-dashed border-zinc-200 p-5 text-center text-sm text-zinc-600 dark:border-white/10 dark:text-zinc-400">
                 Your cart is empty. Add a meal before checkout.
                 <Button className="mt-4 w-full" variant="outline" onClick={() => navigate("/menu")}>Browse Menu</Button>
               </div>
@@ -279,19 +279,19 @@ export function CheckoutPage() {
                 );
               })
             )}
-            <div className="space-y-2 border-t border-white/10 pt-4 text-sm">
+            <div className="space-y-2 border-t border-zinc-200 pt-4 text-sm dark:border-white/10">
               <Line label="Subtotal" value={formatCurrency(cart.subtotal)} />
               <Line label="Delivery" value={deliveryMode === "delivery" ? formatCurrency(cart.deliveryFee) : "No delivery fee"} />
               <Line label="Tax" value={formatCurrency(cart.tax)} />
               <Line label={deliveryMode === "delivery" ? "Estimated delivery" : "Ready time"} value={deliveryMode === "delivery" ? "30-45 min" : selectedTime.label} />
               <Line label="Total" value={formatCurrency(orderTotal)} strong />
             </div>
-            <div className="rounded-2xl border border-savoury-secondary/20 bg-savoury-secondary/10 p-4 text-sm text-zinc-200">
-              <div className="flex items-center gap-2 font-black text-white">
+            <div className="rounded-2xl border border-savoury-primary/20 bg-savoury-accent p-4 text-sm text-zinc-700 dark:border-savoury-secondary/20 dark:bg-savoury-secondary/10 dark:text-zinc-200">
+              <div className="flex items-center gap-2 font-black text-zinc-950 dark:text-white">
                 <ShoppingBag size={18} className="text-savoury-secondary" />
                 {deliveryMode === "pickup" ? "Pickup order" : deliveryMode === "dining" ? "Dining order" : "Delivery order"}
               </div>
-              <p className="mt-1 text-zinc-400">
+              <p className="mt-1 text-zinc-600 dark:text-zinc-400">
                 {deliveryMode === "pickup"
                   ? "Collect your food at Savoury Restaurant."
                   : deliveryMode === "dining"
@@ -311,7 +311,7 @@ export function CheckoutPage() {
 }
 
 function Line({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
-  return <div className={`flex justify-between ${strong ? "text-lg font-black text-white" : "text-zinc-400"}`}><span>{label}</span><span>{value}</span></div>;
+  return <div className={`flex justify-between ${strong ? "text-lg font-black text-zinc-950 dark:text-white" : "text-zinc-600 dark:text-zinc-400"}`}><span>{label}</span><span>{value}</span></div>;
 }
 
 function FulfillmentButton({ active, icon: Icon, title, note, onClick }: { active: boolean; icon: LucideIcon; title: string; note: string; onClick: () => void }) {
@@ -320,15 +320,15 @@ function FulfillmentButton({ active, icon: Icon, title, note, onClick }: { activ
       type="button"
       onClick={onClick}
       className={`flex min-h-20 items-center gap-3 rounded-xl border px-4 py-3 text-left transition ${
-        active ? "border-savoury-secondary bg-savoury-secondary text-zinc-950 shadow-soft" : "border-transparent bg-white/5 text-zinc-300 hover:border-savoury-primary hover:text-white"
+        active ? "border-savoury-primary bg-savoury-accent text-savoury-primary shadow-soft dark:border-savoury-secondary dark:bg-savoury-secondary dark:text-zinc-950" : "border-transparent bg-white text-zinc-700 hover:border-savoury-primary hover:text-savoury-primary dark:bg-white/5 dark:text-zinc-300 dark:hover:text-white"
       }`}
     >
-      <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${active ? "bg-zinc-950 text-savoury-secondary" : "bg-white/10 text-savoury-secondary"}`}>
+      <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${active ? "bg-savoury-primary text-white dark:bg-zinc-950 dark:text-savoury-secondary" : "bg-savoury-accent text-savoury-primary dark:bg-white/10 dark:text-savoury-secondary"}`}>
         <Icon size={20} />
       </span>
       <span>
         <span className="block font-black">{title}</span>
-        <span className={`block text-xs font-bold ${active ? "text-zinc-800" : "text-zinc-500"}`}>{note}</span>
+        <span className={`block text-xs font-bold ${active ? "text-savoury-primary/75 dark:text-zinc-800" : "text-zinc-500"}`}>{note}</span>
       </span>
     </button>
   );
@@ -340,7 +340,7 @@ function PaymentCard({ active, icon: Icon, title, onClick }: { active: boolean; 
       type="button"
       onClick={onClick}
       className={`rounded-2xl border p-4 text-left transition ${
-        active ? "border-savoury-secondary bg-savoury-secondary text-zinc-950" : "border-white/10 bg-[#101010] text-zinc-300 hover:border-savoury-primary hover:text-white"
+        active ? "border-savoury-primary bg-savoury-accent text-savoury-primary dark:border-savoury-secondary dark:bg-savoury-secondary dark:text-zinc-950" : "border-zinc-200 bg-white text-zinc-700 hover:border-savoury-primary hover:text-savoury-primary dark:border-white/10 dark:bg-[#101010] dark:text-zinc-300 dark:hover:text-white"
       }`}
     >
       <Icon size={20} />

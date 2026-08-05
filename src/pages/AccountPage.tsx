@@ -328,7 +328,7 @@ function AddressesPanel({ addresses, onSave, onDefault, onDelete }: { addresses:
         <Input required placeholder="Label, e.g. Home" value={form.label} onChange={(event) => setForm({ ...form, label: event.target.value })} />
         <select
           required
-          className="h-12 w-full rounded-xl border border-white/10 bg-[#101010] px-4 text-sm font-bold text-white outline-none transition focus:border-savoury-primary focus:ring-4 focus:ring-[#1f2a12]"
+          className="h-12 w-full rounded-xl border border-zinc-200 bg-white px-4 text-sm font-bold text-zinc-950 outline-none transition focus:border-savoury-primary focus:ring-4 focus:ring-savoury-primary/10 dark:border-white/10 dark:bg-[#101010] dark:text-white"
           value={ileIfeLocations.includes(form.city) ? form.city : ileIfeLocations[0]}
           onChange={(event) => setForm({ ...form, city: event.target.value })}
         >
@@ -433,6 +433,7 @@ function SettingsPanel({ profile, announce }: { profile: ReturnType<typeof useAu
   const setTheme = (theme: "dark" | "light") => {
     document.documentElement.classList.toggle("dark", theme === "dark");
     localStorage.setItem("savoury-theme", theme);
+    window.dispatchEvent(new CustomEvent("savoury-theme-change", { detail: theme }));
     announce(`${theme === "dark" ? "Dark" : "Light"} mode selected.`);
   };
 

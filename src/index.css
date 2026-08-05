@@ -13,14 +13,18 @@
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    color-scheme: light;
   }
 
   .dark {
     color: #fff8e1;
     background: #151313;
+    color-scheme: dark;
   }
 
   body {
+    background: inherit;
+    color: inherit;
     margin: 0;
     min-width: 320px;
     min-height: 100vh;
@@ -83,7 +87,7 @@
   }
 
   .dark-surface {
-    @apply border border-white/10 bg-[#202020] text-white shadow-soft;
+    @apply border border-zinc-200 bg-white text-zinc-950 shadow-soft dark:border-white/10 dark:bg-[#202020] dark:text-white;
   }
 
   .scrollbar-hide {
@@ -98,6 +102,16 @@
   .thermal-receipt {
     width: 80mm;
     max-width: 100%;
+  }
+}
+
+@layer utilities {
+  .dark .text-savoury-primary {
+    color: #a9bd79;
+  }
+
+  .dark .hover\:text-savoury-primary:hover {
+    color: #bfd391;
   }
 }
 
