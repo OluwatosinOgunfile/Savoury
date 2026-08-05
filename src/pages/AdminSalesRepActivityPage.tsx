@@ -1,6 +1,6 @@
 import { Link, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, BadgeDollarSign, Clock3, LogIn, ReceiptText, ShieldCheck, UserRound } from "lucide-react";
+import { ArrowLeft, ArrowRight, BadgeDollarSign, Clock3, LogIn, ReceiptText, ShieldCheck, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
 import { fetchAdminSalesRepresentativeActivity } from "@/services/adminDashboardService";
@@ -63,7 +63,10 @@ export function AdminSalesRepActivityPage() {
 
           <Card>
             <CardContent>
-              <div className="flex items-center gap-3"><Clock3 className="h-5 w-5 text-savoury-primary" /><h2 className="text-lg font-black">Activity timeline</h2></div>
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3"><Clock3 className="h-5 w-5 text-savoury-primary" /><h2 className="text-lg font-black">Activity timeline</h2></div>
+                <Link to={`/admin/sales-representatives/${rep.id}/activity`}><Button size="sm" variant="outline">More Activity <ArrowRight className="h-4 w-4" /></Button></Link>
+              </div>
               <div className="mt-4 grid gap-3">
                 {data.events.map((event) => (
                   <div key={event.id} className="flex gap-3 rounded-xl bg-zinc-50 p-3 dark:bg-white/5">
