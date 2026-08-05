@@ -63,18 +63,16 @@ export function AdminSalesRepActivityPage() {
 
           <Card>
             <CardContent>
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3"><Clock3 className="h-5 w-5 text-savoury-primary" /><h2 className="text-lg font-black">Activity timeline</h2></div>
-                <Link to={`/admin/sales-representatives/${rep.id}/activity`}><Button size="sm" variant="outline">More Activity <ArrowRight className="h-4 w-4" /></Button></Link>
-              </div>
+              <div className="flex items-center gap-3"><Clock3 className="h-5 w-5 text-savoury-primary" /><h2 className="text-lg font-black">Recent activity</h2></div>
               <div className="mt-4 grid gap-3">
-                {data.events.map((event) => (
+                {data.events.slice(0, 10).map((event) => (
                   <div key={event.id} className="flex gap-3 rounded-xl bg-zinc-50 p-3 dark:bg-white/5">
                     <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-savoury-primary/10 text-savoury-primary">{event.action === "signed_in" ? <LogIn className="h-4 w-4" /> : <ShieldCheck className="h-4 w-4" />}</span>
                     <div><p className="text-sm font-black capitalize">{event.action.replace(/_/g, " ")}</p>{event.details && <p className="text-xs font-semibold text-zinc-500">{event.details}</p>}<p className="mt-1 text-xs text-zinc-400">{formatDate(event.createdAt)}</p></div>
                   </div>
                 ))}
                 {!data.events.length && <Empty text="No tracked activity yet. New sign-ins and completed sales will appear here." />}
+                {data.events.length > 0 && <Link className="mt-1" to={`/admin/sales-representatives/${rep.id}/activity`}><Button className="w-full" variant="outline">More Activity <ArrowRight className="h-4 w-4" /></Button></Link>}
               </div>
             </CardContent>
           </Card>
