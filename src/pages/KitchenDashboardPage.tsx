@@ -10,6 +10,7 @@ const stages: Array<{ id: KitchenOrderStatus; title: string; subtitle: string }>
   { id: "received", title: "Received", subtitle: "Waiting to be started" },
   { id: "preparing", title: "Preparing", subtitle: "Currently in the kitchen" },
   { id: "ready", title: "Ready", subtitle: "Waiting for service or dispatch" },
+  { id: "out_for_delivery", title: "Out for delivery", subtitle: "Dispatched and awaiting confirmation" },
 ];
 
 export function KitchenDashboardPage() {
@@ -26,7 +27,7 @@ export function KitchenDashboardPage() {
   }, []);
 
   const counts = useMemo(() => Object.fromEntries(stages.map((stage) => [stage.id, orders.filter((order) => order.status === stage.id).length])), [orders]);
-  const moveOrder = async (order: KitchenOrder, status: "preparing" | "ready") => {
+  const moveOrder = async (order: KitchenOrder, status: "preparing" | "ready" | "out_for_delivery") => {
     setUpdating(order.id);
     setMessage("");
     try {
@@ -50,13 +51,13 @@ export function KitchenDashboardPage() {
       </section>
 
       <div className="mx-auto max-w-[1500px] px-4 py-5">
-        <section className="grid gap-3 sm:grid-cols-3">
+        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {stages.map((stage) => <Card key={stage.id}><CardContent className="flex items-center justify-between"><div><p className="text-xs font-black uppercase text-zinc-500">{stage.title}</p><p className="mt-1 text-3xl font-black">{counts[stage.id] || 0}</p></div><MonitorCheck className="h-7 w-7 text-savoury-primary" /></CardContent></Card>)}
         </section>
         {message && <p className="mt-4 rounded-xl border border-savoury-primary/20 bg-savoury-primary/10 px-4 py-3 text-sm font-black text-savoury-primary">{message}</p>}
         {error && <p className="mt-4 rounded-xl bg-red-500/10 px-4 py-3 text-sm font-black text-red-500">{error instanceof Error ? error.message : "Could not load kitchen orders."}</p>}
 
-        <section className="mt-5 grid gap-4 xl:grid-cols-3">
+        <section className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {stages.map((stage) => (
             <div key={stage.id} className="min-w-0 rounded-2xl border border-zinc-200 bg-zinc-100/70 p-3 dark:border-white/10 dark:bg-white/[0.03]">
               <div className="flex items-end justify-between px-1 pb-3"><div><h2 className="text-lg font-black">{stage.title}</h2><p className="text-xs font-semibold text-zinc-500">{stage.subtitle}</p></div><span className="rounded-full bg-white px-3 py-1 text-xs font-black dark:bg-white/10">{counts[stage.id] || 0}</span></div>
@@ -72,7 +73,7 @@ export function KitchenDashboardPage() {
   );
 }
 
-function KitchenTicket({ order, now, updating, onMove }: { order: KitchenOrder; now: number; updating: boolean; onMove: (order: KitchenOrder, status: "preparing" | "ready") => void }) {
+function KitchenTicket({ order, now, updating, onMove }: { order: KitchenOrder; now: number; updating: boolean; onMove: (order: KitchenOrder, status: "preparing" | "ready" | "out_for_delivery") => void }) {
   return (
     <Card className="border-zinc-200 shadow-sm dark:border-white/10">
       <CardContent className="p-4">
@@ -83,6 +84,9 @@ function KitchenTicket({ order, now, updating, onMove }: { order: KitchenOrder; 
         {order.instructions && <div className="mt-4 rounded-xl bg-amber-500/10 p-3 text-xs font-bold text-amber-700 dark:text-amber-400"><UtensilsCrossed className="mr-1 inline h-3 w-3" /> {order.instructions}</div>}
         {order.status === "received" && <Button className="mt-4 w-full" disabled={updating} onClick={() => onMove(order, "preparing")}>{updating ? "Updating..." : "Start preparing"}</Button>}
         {order.status === "preparing" && <Button className="mt-4 w-full" disabled={updating} onClick={() => onMove(order, "ready")}>{updating ? "Updating..." : "Mark ready"}</Button>}
+        {order.status === "ready" && order.orderType === "delivery" && <Button className="mt-4 w-full" disabled={updating} onClick={() => onMove(order, "out_for_delivery")}>{updating ? "Updating..." : "Send out for delivery"}</Button>}
+        {order.status === "ready" && order.orderType !== "delivery" && <p className="mt-4 rounded-xl bg-savoury-primary/10 px-3 py-2 text-center text-xs font-black text-savoury-primary">Ready for counter handover</p>}
+        {order.status === "out_for_delivery" && <p className="mt-4 rounded-xl bg-savoury-primary/10 px-3 py-2 text-center text-xs font-black text-savoury-primary">Awaiting delivery confirmation</p>}
       </CardContent>
     </Card>
   );

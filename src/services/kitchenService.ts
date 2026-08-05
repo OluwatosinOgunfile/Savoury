@@ -1,6 +1,6 @@
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 
-export type KitchenOrderStatus = "received" | "preparing" | "ready";
+export type KitchenOrderStatus = "received" | "preparing" | "ready" | "out_for_delivery";
 export type KitchenOrderSource = "app" | "pos";
 
 export interface KitchenOrder {
@@ -32,8 +32,8 @@ export interface KitchenStaff {
 export async function fetchKitchenOrders(): Promise<KitchenOrder[]> {
   if (!isSupabaseConfigured || !supabase) return [];
   const [appResult, posResult] = await Promise.all([
-    supabase.from("orders").select("id, status, delivery_mode, customer_name, special_instructions, created_at, order_items(quantity, foods(name))").in("status", ["received", "preparing", "ready"]).order("created_at"),
-    supabase.from("pos_orders").select("id, receipt_number, fulfillment_status, order_type, customer_name, delivery_address, created_at, pos_order_items(food_name, quantity)").in("fulfillment_status", ["received", "preparing", "ready"]).order("created_at"),
+    supabase.from("orders").select("id, status, delivery_mode, customer_name, special_instructions, created_at, order_items(quantity, foods(name))").in("status", ["received", "preparing", "ready", "out_for_delivery"]).order("created_at"),
+    supabase.from("pos_orders").select("id, receipt_number, fulfillment_status, order_type, customer_name, delivery_address, created_at, pos_order_items(food_name, quantity)").in("fulfillment_status", ["received", "preparing", "ready", "out_for_delivery"]).order("created_at"),
   ]);
   if (appResult.error) throw appResult.error;
   if (posResult.error) throw posResult.error;
