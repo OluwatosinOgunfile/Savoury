@@ -42,6 +42,10 @@ serve(async (req) => {
         : { last_login_at: now, updated_at: now };
       const { error } = await adminClient.from("kitchen_staff").update(updates).eq("auth_user_id", caller.user.id).eq("status", "active");
       if (error) return json({ error: error.message }, 400);
+      if (action === "record_login") {
+        const { error: logError } = await adminClient.from("kitchen_activity_logs").insert({ actor_id: caller.user.id, action: "signed_in" });
+        if (logError) console.warn("Could not record kitchen login activity", logError.message);
+      }
       return json({ success: true });
     }
 

@@ -427,7 +427,7 @@ export function AdminDashboard() {
                 <tbody>
                   {kitchenStaff.map((staff) => (
                     <tr key={staff.id} className="border-t border-zinc-100 dark:border-white/10">
-                      <td className="py-4 font-black">{staff.fullName}<p className="text-xs text-zinc-500">{staff.staffId}</p></td>
+                      <td className="py-4 font-black"><Link className="transition hover:text-savoury-primary hover:underline" to={`/admin/kitchen-staff/${staff.id}`}>{staff.fullName}</Link><p className="text-xs text-zinc-500">{staff.staffId}</p></td>
                       <td>{staff.email}</td>
                       <td><span className={`rounded-full px-3 py-1 text-xs font-black capitalize ${staff.status === "active" ? "bg-savoury-primary/10 text-savoury-primary" : "bg-red-500/10 text-red-500"}`}>{staff.status}</span></td>
                       <td>{staff.mustChangePassword ? "Change required" : "Private password set"}</td>

@@ -29,6 +29,22 @@ export interface KitchenStaff {
   temporaryPassword?: string;
 }
 
+export interface KitchenActivityLog {
+  id: string;
+  action: string;
+  orderSource?: KitchenOrderSource;
+  orderId?: string;
+  orderNumber?: string;
+  fromStatus?: string;
+  toStatus?: string;
+  createdAt: string;
+}
+
+export interface KitchenStaffActivity {
+  staff: KitchenStaff;
+  events: KitchenActivityLog[];
+}
+
 export async function fetchKitchenOrders(): Promise<KitchenOrder[]> {
   if (!isSupabaseConfigured || !supabase) return [];
   const [appResult, posResult] = await Promise.all([
@@ -81,6 +97,49 @@ export async function fetchKitchenStaff(): Promise<KitchenStaff[]> {
   const { data, error } = await supabase.from("kitchen_staff").select("id, full_name, email, phone, staff_id, status, must_change_password, created_at, last_login_at").order("created_at", { ascending: false });
   if (error) throw error;
   return data.map((staff: any) => ({ id: staff.id, fullName: staff.full_name, email: staff.email, phone: staff.phone || undefined, staffId: staff.staff_id, status: staff.status, mustChangePassword: staff.must_change_password, createdAt: staff.created_at, lastLoginAt: staff.last_login_at || undefined }));
+}
+
+export async function fetchKitchenStaffActivity(staffId: string): Promise<KitchenStaffActivity | null> {
+  if (!isSupabaseConfigured || !supabase || !staffId) return null;
+  const { data: staff, error: staffError } = await supabase
+    .from("kitchen_staff")
+    .select("id, auth_user_id, full_name, email, phone, staff_id, status, must_change_password, created_at, last_login_at")
+    .eq("id", staffId)
+    .maybeSingle();
+  if (staffError) throw staffError;
+  if (!staff) return null;
+
+  const { data: logs, error: logsError } = await supabase
+    .from("kitchen_activity_logs")
+    .select("id, action, order_source, order_id, from_status, to_status, metadata, created_at")
+    .eq("actor_id", staff.auth_user_id)
+    .order("created_at", { ascending: false })
+    .limit(250);
+  if (logsError) throw logsError;
+
+  return {
+    staff: {
+      id: staff.id,
+      fullName: staff.full_name,
+      email: staff.email,
+      phone: staff.phone || undefined,
+      staffId: staff.staff_id,
+      status: staff.status,
+      mustChangePassword: staff.must_change_password,
+      createdAt: staff.created_at,
+      lastLoginAt: staff.last_login_at || undefined,
+    },
+    events: (logs || []).map((log: any) => ({
+      id: log.id,
+      action: log.action,
+      orderSource: log.order_source || undefined,
+      orderId: log.order_id || undefined,
+      orderNumber: log.metadata?.order_number || undefined,
+      fromStatus: log.from_status || undefined,
+      toStatus: log.to_status || undefined,
+      createdAt: log.created_at,
+    })),
+  };
 }
 
 export async function saveKitchenStaff(input: { fullName: string; email: string; phone?: string; status: "active" | "suspended" }) {
