@@ -1,13 +1,15 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   BadgeDollarSign,
   BarChart3,
   Bell,
   Clock,
+  CheckCircle2,
   Download,
   Minus,
   PauseCircle,
+  PackageCheck,
   Plus,
   Printer,
   ReceiptText,
@@ -26,15 +28,20 @@ import { Input } from "@/components/ui/Input";
 import { categories as fallbackCategories, foods as fallbackFoods } from "@/data/catalog";
 import { useAuth } from "@/hooks/useAuth";
 import { formatCurrency } from "@/lib/utils";
+import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { fetchCategories, fetchFoods, foodKeys } from "@/services/foodService";
 import {
   calculatePosSummary,
   createPosReceipt,
+  confirmPosCounterHandover,
+  fetchMyPosCounterOrders,
+  fetchMyPosNotifications,
   getHeldOrders,
   getLastReceipt,
   getLocalReceipts,
   holdPosOrder,
   lowStockFoods,
+  markPosNotificationsRead,
   refundLocalReceipt,
   removeHeldOrder,
   type HeldPosOrder,
@@ -42,6 +49,7 @@ import {
   type PosPayment,
   type PosPaymentMethod,
   type PosReceipt,
+  type PosCounterOrder,
 } from "@/services/posService";
 import type { CartItem, Food, FoodCategory, PaymentMethod } from "@/types";
 
@@ -65,6 +73,22 @@ export function SalesRepPosPage() {
   const [online, setOnline] = useState(navigator.onLine);
   const [customer, setCustomer] = useState({ name: "", phone: "", tableNumber: "", deliveryAddress: "", orderType: "takeaway" as PosOrderType });
   const [discount, setDiscount] = useState(0);
+  const [handingOver, setHandingOver] = useState<string | null>(null);
+  const lastNotificationId = useRef<string | null>(null);
+  const { data: counterOrders = [] } = useQuery({
+    queryKey: ["pos-counter-orders", profile?.id],
+    queryFn: fetchMyPosCounterOrders,
+    enabled: Boolean(profile?.id),
+    refetchInterval: 5000,
+  });
+  const { data: posNotifications = [] } = useQuery({
+    queryKey: ["pos-staff-notifications", profile?.id],
+    queryFn: fetchMyPosNotifications,
+    enabled: Boolean(profile?.id),
+    refetchInterval: 5000,
+  });
+  const readyOrders = counterOrders.filter((order) => order.status === "ready");
+  const unreadReadyCount = posNotifications.filter((notification) => !notification.read).length;
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 1000);
@@ -87,6 +111,35 @@ export function SalesRepPosPage() {
       window.removeEventListener("savoury-pos-receipts-updated", syncReceipts);
     };
   }, []);
+
+  useEffect(() => {
+    const latestUnread = posNotifications.find((notification) => !notification.read);
+    if (latestUnread && latestUnread.id !== lastNotificationId.current) {
+      lastNotificationId.current = latestUnread.id;
+      setToast(latestUnread.body);
+    }
+  }, [posNotifications]);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured || !supabase || !profile?.id) return;
+    const client = supabase;
+    const channel = client
+      .channel(`pos-ready-${profile.id}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "pos_staff_notifications", filter: `recipient_id=eq.${profile.id}` },
+        (payload) => {
+          const notification = payload.new as { body?: string };
+          setToast(notification.body || "An order is ready for counter handover.");
+          void queryClient.invalidateQueries({ queryKey: ["pos-counter-orders", profile.id] });
+          void queryClient.invalidateQueries({ queryKey: ["pos-staff-notifications", profile.id] });
+        }
+      )
+      .subscribe();
+    return () => {
+      void client.removeChannel(channel);
+    };
+  }, [profile?.id, queryClient]);
 
   const filteredFoods = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -206,6 +259,7 @@ export function SalesRepPosPage() {
     try {
       const saved = await createPosReceipt(receipt);
       await queryClient.invalidateQueries({ queryKey: foodKeys.all });
+      await queryClient.invalidateQueries({ queryKey: ["pos-counter-orders", profile.id] });
       clearOrder();
       setPaymentOpen(false);
       setReceiptOpen(saved);
@@ -213,6 +267,33 @@ export function SalesRepPosPage() {
       setToast(saved.synced ? "Payment successful. Receipt generated." : "Payment saved offline. Receipt generated.");
     } catch (error) {
       setToast(error instanceof Error ? error.message : "Network error. Could not complete payment.");
+    }
+  };
+
+  const openOrders = async () => {
+    setActiveTab("orders");
+    if (!unreadReadyCount) return;
+    try {
+      await markPosNotificationsRead();
+      await queryClient.invalidateQueries({ queryKey: ["pos-staff-notifications", profile?.id] });
+    } catch (error) {
+      setToast(error instanceof Error ? error.message : "Could not mark notifications as read.");
+    }
+  };
+
+  const confirmHandover = async (order: PosCounterOrder) => {
+    setHandingOver(order.id);
+    try {
+      await confirmPosCounterHandover(order.id);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["pos-counter-orders", profile?.id] }),
+        queryClient.invalidateQueries({ queryKey: ["pos-staff-notifications", profile?.id] }),
+      ]);
+      setToast(`${order.receiptNumber} handed over successfully.`);
+    } catch (error) {
+      setToast(error instanceof Error ? error.message : "Could not confirm this handover.");
+    } finally {
+      setHandingOver(null);
     }
   };
 
@@ -230,6 +311,11 @@ export function SalesRepPosPage() {
           <div className="grid grid-cols-2 gap-2 md:flex">
             <PosMetric label="Sales Today" value={summary.salesToday.toString()} />
             <PosMetric label="Revenue" value={formatCurrency(summary.revenueToday)} />
+            <button onClick={openOrders} className="relative rounded-xl border border-zinc-100 bg-zinc-50 px-4 py-3 text-left text-xs font-black text-zinc-700 dark:border-white/10 dark:bg-white/5 dark:text-zinc-200">
+              <Bell className="mb-1 h-4 w-4 text-savoury-primary" />
+              {readyOrders.length ? `${readyOrders.length} ready` : "No ready orders"}
+              {unreadReadyCount > 0 && <span className="absolute right-2 top-2 grid h-5 min-w-5 place-items-center rounded-full bg-savoury-primary px-1 text-[10px] text-white">{unreadReadyCount}</span>}
+            </button>
             <button className={`rounded-xl px-4 py-3 text-left text-xs font-black ${online ? "bg-emerald-500/10 text-emerald-600" : "bg-red-500/10 text-red-500"}`}>
               {online ? "Online" : "Offline Mode"}
             </button>
@@ -249,13 +335,14 @@ export function SalesRepPosPage() {
             ].map(([id, label, Icon]) => (
               <button
                 key={id as string}
-                onClick={() => setActiveTab(id as PosTab)}
+                onClick={() => id === "orders" ? void openOrders() : setActiveTab(id as PosTab)}
                 className={`flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl px-2 text-xs font-black transition lg:flex-row lg:justify-start lg:px-4 lg:text-sm ${
                   activeTab === id ? "bg-savoury-primary text-white shadow-soft" : "text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10"
                 }`}
               >
                 <Icon className="h-5 w-5" />
                 {label as string}
+                {id === "orders" && readyOrders.length > 0 && <span className="grid h-5 min-w-5 place-items-center rounded-full bg-savoury-secondary px-1 text-[10px] text-zinc-950">{readyOrders.length}</span>}
               </button>
             ))}
             <button onClick={signOut} className="flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl px-2 text-xs font-black text-red-500 hover:bg-red-500/10 lg:flex-row lg:justify-start lg:px-4 lg:text-sm">
@@ -308,7 +395,7 @@ export function SalesRepPosPage() {
               </div>
             </>
           )}
-          {activeTab === "orders" && <OrdersPanel heldOrders={heldOrders} onResume={resumeOrder} onRemove={(id) => { removeHeldOrder(id); setHeldOrders(getHeldOrders()); }} />}
+          {activeTab === "orders" && <OrdersPanel counterOrders={counterOrders} handingOver={handingOver} heldOrders={heldOrders} onConfirmHandover={confirmHandover} onResume={resumeOrder} onRemove={(id) => { removeHeldOrder(id); setHeldOrders(getHeldOrders()); }} />}
           {activeTab === "receipts" && <ReceiptsPanel canRefund={profile?.permissions.includes("refunds") === true} receipts={receipts} onOpen={setReceiptOpen} onRefund={(receipt) => { refundLocalReceipt(receipt.id); setReceipts(getLocalReceipts()); setToast("Receipt refunded locally."); }} />}
           {activeTab === "reports" && <ReportsPanel summary={summary} />}
           {activeTab === "profile" && <ProfilePanel profile={profile} />}
@@ -563,9 +650,48 @@ function receiptText(receipt: PosReceipt) {
   ].join("\n");
 }
 
-function OrdersPanel({ heldOrders, onResume, onRemove }: { heldOrders: HeldPosOrder[]; onResume: (order: HeldPosOrder) => void; onRemove: (id: string) => void }) {
+function OrdersPanel({ counterOrders, handingOver, heldOrders, onConfirmHandover, onResume, onRemove }: { counterOrders: PosCounterOrder[]; handingOver: string | null; heldOrders: HeldPosOrder[]; onConfirmHandover: (order: PosCounterOrder) => void; onResume: (order: HeldPosOrder) => void; onRemove: (id: string) => void }) {
+  const ready = counterOrders.filter((order) => order.status === "ready");
+  const inKitchen = counterOrders.filter((order) => order.status !== "ready");
   return (
-    <Panel title="Held Orders" subtitle="Resume or cancel paused counter orders.">
+    <Panel title="Orders" subtitle="Track kitchen progress, complete counter handovers, and resume held orders.">
+      <div className="mb-7">
+        <div className="mb-3 flex items-center gap-2">
+          <PackageCheck className="h-5 w-5 text-savoury-primary" />
+          <h3 className="text-lg font-black">Ready for Handover</h3>
+          <span className="rounded-full bg-savoury-primary/10 px-2.5 py-1 text-xs font-black text-savoury-primary">{ready.length}</span>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {ready.map((order) => (
+            <Card key={order.id} className="border-savoury-primary/30 bg-savoury-primary/5 dark:bg-savoury-primary/10">
+              <CardContent>
+                <div className="flex items-start justify-between gap-3">
+                  <div><h4 className="font-black">{order.receiptNumber}</h4><p className="text-sm font-semibold text-zinc-500">{order.customerName || "Walk-in customer"}{order.tableNumber ? ` • Table ${order.tableNumber}` : ""}</p></div>
+                  <span className="rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-black text-emerald-600">Ready</span>
+                </div>
+                <p className="mt-3 text-sm font-semibold text-zinc-600 dark:text-zinc-300">{order.items.map((item) => `${item.quantity}× ${item.name}`).join(", ")}</p>
+                <p className="mt-2 text-xs font-bold text-zinc-400">{order.orderType.replace("_", " ")} • {formatCurrency(order.total)}</p>
+                <Button className="mt-4 w-full" disabled={handingOver === order.id} onClick={() => onConfirmHandover(order)}>
+                  <CheckCircle2 className="h-4 w-4" /> {handingOver === order.id ? "Confirming..." : "Confirm Handover"}
+                </Button>
+              </CardContent>
+            </Card>
+          ))}
+          {!ready.length && <EmptyPanel text="No orders are waiting for counter handover." />}
+        </div>
+      </div>
+
+      <div className="mb-7">
+        <div className="mb-3 flex items-center gap-2"><Clock className="h-5 w-5 text-amber-500" /><h3 className="text-lg font-black">In the Kitchen</h3></div>
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {inKitchen.map((order) => (
+            <Card key={order.id}><CardContent><h4 className="font-black">{order.receiptNumber}</h4><p className="mt-1 text-sm font-semibold text-zinc-500">{order.customerName || "Walk-in customer"}</p><p className="mt-3 text-sm text-zinc-500">{order.items.map((item) => `${item.quantity}× ${item.name}`).join(", ")}</p><span className="mt-3 inline-flex rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-black capitalize text-amber-600">{order.status}</span></CardContent></Card>
+          ))}
+          {!inKitchen.length && <EmptyPanel text="No active counter orders in the kitchen." />}
+        </div>
+      </div>
+
+      <h3 className="mb-3 text-lg font-black">Held Orders</h3>
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         {heldOrders.map((order) => (
           <Card key={order.id}>

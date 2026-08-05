@@ -71,6 +71,30 @@ export interface PosSalesSummary {
   mostSoldFoods: Array<{ name: string; quantity: number }>;
 }
 
+export type PosFulfillmentStatus = "received" | "preparing" | "ready" | "completed";
+
+export interface PosCounterOrder {
+  id: string;
+  receiptNumber: string;
+  customerName?: string;
+  tableNumber?: string;
+  orderType: Exclude<PosOrderType, "delivery">;
+  status: PosFulfillmentStatus;
+  items: Array<{ name: string; quantity: number }>;
+  total: number;
+  createdAt: string;
+  readyAt?: string;
+}
+
+export interface PosStaffNotification {
+  id: string;
+  orderId: string;
+  title: string;
+  body: string;
+  read: boolean;
+  createdAt: string;
+}
+
 const receiptsKey = "savoury-pos-receipts";
 const heldOrdersKey = "savoury-pos-held-orders";
 const salesRepKey = "savoury-sales-representatives";
@@ -338,6 +362,67 @@ export async function createPosReceipt(receipt: PosReceipt) {
   saveLocalReceipts([finalReceipt, ...getLocalReceipts().filter((item) => item.id !== finalReceipt.id)]);
   localStorage.setItem(lastReceiptKey, finalReceipt.id);
   return finalReceipt;
+}
+
+export async function fetchMyPosCounterOrders(): Promise<PosCounterOrder[]> {
+  if (!isSupabaseConfigured || !supabase) return [];
+  const { data: authData } = await supabase.auth.getUser();
+  if (!authData.user) return [];
+
+  const { data, error } = await supabase
+    .from("pos_orders")
+    .select("id, receipt_number, customer_name, table_number, order_type, fulfillment_status, total, created_at, ready_at, pos_order_items(food_name, quantity)")
+    .eq("cashier_id", authData.user.id)
+    .in("order_type", ["dine_in", "takeaway"])
+    .in("fulfillment_status", ["received", "preparing", "ready"])
+    .order("created_at", { ascending: true });
+
+  if (error) throw error;
+  return (data || []).map((order: any) => ({
+    id: order.id,
+    receiptNumber: order.receipt_number,
+    customerName: order.customer_name || undefined,
+    tableNumber: order.table_number || undefined,
+    orderType: order.order_type,
+    status: order.fulfillment_status,
+    total: Number(order.total || 0),
+    createdAt: order.created_at,
+    readyAt: order.ready_at || undefined,
+    items: (order.pos_order_items || []).map((item: any) => ({
+      name: item.food_name,
+      quantity: Number(item.quantity || 0),
+    })),
+  }));
+}
+
+export async function fetchMyPosNotifications(): Promise<PosStaffNotification[]> {
+  if (!isSupabaseConfigured || !supabase) return [];
+  const { data, error } = await supabase
+    .from("pos_staff_notifications")
+    .select("id, pos_order_id, title, body, read_at, created_at")
+    .order("created_at", { ascending: false })
+    .limit(30);
+  if (error) throw error;
+  return (data || []).map((notification: any) => ({
+    id: notification.id,
+    orderId: notification.pos_order_id,
+    title: notification.title,
+    body: notification.body,
+    read: Boolean(notification.read_at),
+    createdAt: notification.created_at,
+  }));
+}
+
+export async function markPosNotificationsRead() {
+  if (!isSupabaseConfigured || !supabase) return;
+  const { error } = await supabase.rpc("mark_my_pos_notifications_read");
+  if (error) throw error;
+}
+
+export async function confirmPosCounterHandover(orderId: string) {
+  if (!isSupabaseConfigured || !supabase) throw new Error("Supabase is not configured.");
+  const { error } = await supabase.rpc("confirm_pos_counter_handover", { target_order_id: orderId });
+  if (error) throw error;
 }
 
 export function holdPosOrder(order: HeldPosOrder) {
