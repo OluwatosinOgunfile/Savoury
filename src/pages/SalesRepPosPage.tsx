@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   BadgeDollarSign,
@@ -19,6 +19,8 @@ import {
   ShoppingBag,
   Trash2,
   UserRound,
+  Volume2,
+  VolumeX,
   WifiOff,
   X,
 } from "lucide-react";
@@ -74,14 +76,17 @@ export function SalesRepPosPage() {
   const [customer, setCustomer] = useState({ name: "", phone: "", tableNumber: "", deliveryAddress: "", orderType: "takeaway" as PosOrderType });
   const [discount, setDiscount] = useState(0);
   const [handingOver, setHandingOver] = useState<string | null>(null);
+  const [readySoundEnabled, setReadySoundEnabled] = useState(() => localStorage.getItem("savoury-pos-ready-sound") !== "false");
   const lastNotificationId = useRef<string | null>(null);
+  const notificationsInitialized = useRef(false);
+  const audioContextRef = useRef<AudioContext | null>(null);
   const { data: counterOrders = [] } = useQuery({
     queryKey: ["pos-counter-orders", profile?.id],
     queryFn: fetchMyPosCounterOrders,
     enabled: Boolean(profile?.id),
     refetchInterval: 5000,
   });
-  const { data: posNotifications = [] } = useQuery({
+  const { data: posNotifications = [], isFetched: notificationsFetched } = useQuery({
     queryKey: ["pos-staff-notifications", profile?.id],
     queryFn: fetchMyPosNotifications,
     enabled: Boolean(profile?.id),
@@ -89,6 +94,41 @@ export function SalesRepPosPage() {
   });
   const readyOrders = counterOrders.filter((order) => order.status === "ready");
   const unreadReadyCount = posNotifications.filter((notification) => !notification.read).length;
+
+  const unlockReadySound = useCallback(async () => {
+    if (!readySoundEnabled) return;
+    audioContextRef.current ||= new AudioContext();
+    if (audioContextRef.current.state === "suspended") await audioContextRef.current.resume();
+  }, [readySoundEnabled]);
+
+  const playReadyTone = useCallback(async () => {
+    if (!readySoundEnabled) return;
+    try {
+      await unlockReadySound();
+      const context = audioContextRef.current;
+      if (!context || context.state !== "running") return;
+      const now = context.currentTime;
+      const gain = context.createGain();
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(0.18, now + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.55);
+      gain.connect(context.destination);
+
+      [
+        { frequency: 784, start: now, stop: now + 0.22 },
+        { frequency: 1047, start: now + 0.24, stop: now + 0.52 },
+      ].forEach((tone) => {
+        const oscillator = context.createOscillator();
+        oscillator.type = "sine";
+        oscillator.frequency.setValueAtTime(tone.frequency, tone.start);
+        oscillator.connect(gain);
+        oscillator.start(tone.start);
+        oscillator.stop(tone.stop);
+      });
+    } catch {
+      // Browsers can withhold audio until the staff interacts with the dashboard.
+    }
+  }, [readySoundEnabled, unlockReadySound]);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 1000);
@@ -113,12 +153,31 @@ export function SalesRepPosPage() {
   }, []);
 
   useEffect(() => {
+    if (!readySoundEnabled) return;
+    const unlock = () => void unlockReadySound();
+    window.addEventListener("pointerdown", unlock, { once: true });
+    window.addEventListener("keydown", unlock, { once: true });
+    return () => {
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("keydown", unlock);
+    };
+  }, [readySoundEnabled, unlockReadySound]);
+
+  useEffect(() => {
+    if (!notificationsFetched) return;
     const latestUnread = posNotifications.find((notification) => !notification.read);
+    if (!notificationsInitialized.current) {
+      notificationsInitialized.current = true;
+      lastNotificationId.current = latestUnread?.id || null;
+      if (latestUnread) setToast(latestUnread.body);
+      return;
+    }
     if (latestUnread && latestUnread.id !== lastNotificationId.current) {
       lastNotificationId.current = latestUnread.id;
       setToast(latestUnread.body);
+      void playReadyTone();
     }
-  }, [posNotifications]);
+  }, [notificationsFetched, playReadyTone, posNotifications]);
 
   useEffect(() => {
     if (!isSupabaseConfigured || !supabase || !profile?.id) return;
@@ -129,8 +188,10 @@ export function SalesRepPosPage() {
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "pos_staff_notifications", filter: `recipient_id=eq.${profile.id}` },
         (payload) => {
-          const notification = payload.new as { body?: string };
+          const notification = payload.new as { id?: string; body?: string };
+          lastNotificationId.current = notification.id || null;
           setToast(notification.body || "An order is ready for counter handover.");
+          void playReadyTone();
           void queryClient.invalidateQueries({ queryKey: ["pos-counter-orders", profile.id] });
           void queryClient.invalidateQueries({ queryKey: ["pos-staff-notifications", profile.id] });
         }
@@ -139,7 +200,7 @@ export function SalesRepPosPage() {
     return () => {
       void client.removeChannel(channel);
     };
-  }, [profile?.id, queryClient]);
+  }, [playReadyTone, profile?.id, queryClient]);
 
   const filteredFoods = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -315,6 +376,24 @@ export function SalesRepPosPage() {
               <Bell className="mb-1 h-4 w-4 text-savoury-primary" />
               {readyOrders.length ? `${readyOrders.length} ready` : "No ready orders"}
               {unreadReadyCount > 0 && <span className="absolute right-2 top-2 grid h-5 min-w-5 place-items-center rounded-full bg-savoury-primary px-1 text-[10px] text-white">{unreadReadyCount}</span>}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const next = !readySoundEnabled;
+                setReadySoundEnabled(next);
+                localStorage.setItem("savoury-pos-ready-sound", String(next));
+                if (next) {
+                  audioContextRef.current ||= new AudioContext();
+                  void audioContextRef.current.resume();
+                }
+                setToast(next ? "Ready-order sound enabled." : "Ready-order sound muted.");
+              }}
+              className="rounded-xl border border-zinc-100 bg-zinc-50 px-4 py-3 text-left text-xs font-black text-zinc-700 dark:border-white/10 dark:bg-white/5 dark:text-zinc-200"
+              title={readySoundEnabled ? "Mute ready-order sound" : "Enable ready-order sound"}
+            >
+              {readySoundEnabled ? <Volume2 className="mb-1 h-4 w-4 text-savoury-primary" /> : <VolumeX className="mb-1 h-4 w-4 text-zinc-400" />}
+              {readySoundEnabled ? "Sound on" : "Sound off"}
             </button>
             <button className={`rounded-xl px-4 py-3 text-left text-xs font-black ${online ? "bg-emerald-500/10 text-emerald-600" : "bg-red-500/10 text-red-500"}`}>
               {online ? "Online" : "Offline Mode"}
