@@ -426,12 +426,24 @@ export function AdminDashboard() {
                 <thead className="text-xs uppercase text-zinc-400"><tr><th className="py-3">Staff</th><th>Email</th><th>Status</th><th>Password</th><th>Actions</th></tr></thead>
                 <tbody>
                   {kitchenStaff.map((staff) => (
-                    <tr key={staff.id} className="border-t border-zinc-100 dark:border-white/10">
-                      <td className="py-4 font-black"><Link className="transition hover:text-savoury-primary hover:underline" to={`/admin/kitchen-staff/${staff.id}`}>{staff.fullName}</Link><p className="text-xs text-zinc-500">{staff.staffId}</p></td>
+                    <tr
+                      key={staff.id}
+                      role="link"
+                      tabIndex={0}
+                      aria-label={`View activity for ${staff.fullName}`}
+                      onClick={() => navigate(`/admin/kitchen-staff/${staff.id}`)}
+                      onKeyDown={(event) => { if (event.key === "Enter") navigate(`/admin/kitchen-staff/${staff.id}`); }}
+                      className="group cursor-pointer border-t border-zinc-100 transition hover:bg-savoury-primary/5 focus:bg-savoury-primary/5 focus:outline-none dark:border-white/10"
+                    >
+                      <td className="py-4 font-black"><span className="text-savoury-primary underline decoration-transparent underline-offset-4 transition group-hover:decoration-current">{staff.fullName}</span><p className="text-xs text-zinc-500">{staff.staffId}</p></td>
                       <td>{staff.email}</td>
                       <td><span className={`rounded-full px-3 py-1 text-xs font-black capitalize ${staff.status === "active" ? "bg-savoury-primary/10 text-savoury-primary" : "bg-red-500/10 text-red-500"}`}>{staff.status}</span></td>
                       <td>{staff.mustChangePassword ? "Change required" : "Private password set"}</td>
-                      <td className="flex gap-2 py-3"><Button size="sm" variant="outline" onClick={() => toggleKitchenStaff(staff)}>{staff.status === "active" ? "Suspend" : "Activate"}</Button><Button size="sm" variant="outline" onClick={() => resetKitchenStaffPassword(staff)}>Reset Password</Button></td>
+                      <td className="flex flex-wrap gap-2 py-3">
+                        <Button size="sm" onClick={(event) => { event.stopPropagation(); navigate(`/admin/kitchen-staff/${staff.id}`); }}>View Activity</Button>
+                        <Button size="sm" variant="outline" onClick={(event) => { event.stopPropagation(); void toggleKitchenStaff(staff); }}>{staff.status === "active" ? "Suspend" : "Activate"}</Button>
+                        <Button size="sm" variant="outline" onClick={(event) => { event.stopPropagation(); void resetKitchenStaffPassword(staff); }}>Reset Password</Button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
