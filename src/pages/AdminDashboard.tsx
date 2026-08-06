@@ -282,7 +282,7 @@ export function AdminDashboard() {
                   <tr><th className="py-3">Order</th><th>Customer</th><th>Status</th><th>Placed</th><th>Total</th><th>Update</th><th>Actions</th></tr>
                 </thead>
                 <tbody>
-                  {filteredOrders.map((order) => (
+                  {filteredOrders.slice(0, 10).map((order) => (
                     <tr key={order.id} className="border-t border-zinc-100 dark:border-white/10">
                       <td className="py-4 font-black">
                         <Link className="text-savoury-primary underline-offset-4 transition hover:underline" to={`/admin/orders/${order.id}`}>
@@ -328,6 +328,10 @@ export function AdminDashboard() {
                   ))}
                 </tbody>
               </table>
+            </div>
+            <div className="mt-4 flex items-center justify-between gap-3 border-t border-zinc-100 pt-4 dark:border-white/10">
+              <p className="text-sm font-semibold text-zinc-500">Showing {Math.min(filteredOrders.length, 10)} of {filteredOrders.length} orders</p>
+              <Button variant="outline" onClick={() => navigate("/admin/orders")}><span>More Orders</span><ArrowRight className="h-4 w-4" /></Button>
             </div>
           </CardContent>
         </Card>

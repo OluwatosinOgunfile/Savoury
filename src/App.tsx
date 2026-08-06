@@ -7,6 +7,7 @@ import { AdminActivityPage } from "@/pages/AdminActivityPage";
 import { AdminFoodFormPage } from "@/pages/AdminFoodFormPage";
 import { AdminManageMenuPage } from "@/pages/AdminManageMenuPage";
 import { AdminOrderDetailsPage } from "@/pages/AdminOrderDetailsPage";
+import { AdminOrdersPage } from "@/pages/AdminOrdersPage";
 import { AdminSalesRepActivityPage } from "@/pages/AdminSalesRepActivityPage";
 import { AdminStaffActivityTimelinePage } from "@/pages/AdminStaffActivityTimelinePage";
 import { AdminStaffPosSalesPage } from "@/pages/AdminStaffPosSalesPage";
@@ -69,6 +70,7 @@ export function App() {
         <Route path="kitchen" element={<RequireKitchen><KitchenDashboardPage /></RequireKitchen>} />
         <Route path="admin" element={<RequireAdmin><AdminDashboard /></RequireAdmin>} />
         <Route path="admin/activity" element={<RequireAdmin><AdminActivityPage /></RequireAdmin>} />
+        <Route path="admin/orders" element={<RequireAdmin><AdminOrdersPage /></RequireAdmin>} />
         <Route path="admin/orders/:orderId" element={<RequireAdmin><AdminOrderDetailsPage /></RequireAdmin>} />
         <Route path="admin/sales-representatives/:repId" element={<RequireAdmin><AdminSalesRepActivityPage /></RequireAdmin>} />
         <Route path="admin/sales-representatives/:repId/activity" element={<RequireAdmin><AdminStaffActivityTimelinePage /></RequireAdmin>} />
