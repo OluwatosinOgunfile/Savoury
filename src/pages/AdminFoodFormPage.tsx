@@ -1,13 +1,13 @@
-import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, ImagePlus, Save } from "lucide-react";
+import { ArrowLeft, ImagePlus, LoaderCircle, Save } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { categories, foods } from "@/data/catalog";
-import { mergeAdminFoods, saveAdminFood } from "@/services/adminMenuStorage";
 import { fetchCategories, fetchFoods, foodKeys, saveFoodToDatabase } from "@/services/foodService";
+import { dataUrlToImageFile, uploadFoodImage } from "@/services/foodImageService";
 import type { Food, FoodCategory } from "@/types";
 
 interface FoodForm {
@@ -38,10 +38,12 @@ export function AdminFoodFormPage() {
   const queryClient = useQueryClient();
   const { data: menuFoods = foods } = useQuery({ queryKey: foodKeys.all, queryFn: fetchFoods });
   const { data: menuCategories = categories } = useQuery({ queryKey: foodKeys.categories, queryFn: fetchCategories });
-  const allFoods = useMemo(() => mergeAdminFoods(menuFoods), [menuFoods]);
-  const existingFood = foodId ? allFoods.find((food) => food.id === foodId) : undefined;
+  const existingFood = foodId ? menuFoods.find((food) => food.id === foodId) : undefined;
   const [form, setForm] = useState<FoodForm>(emptyForm);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("Choose a photo from your device and fill in the food details.");
+  const previewUrl = useRef<string | null>(null);
 
   useEffect(() => {
     if (!existingFood) return;
@@ -57,6 +59,10 @@ export function AdminFoodFormPage() {
     });
   }, [existingFood]);
 
+  useEffect(() => () => {
+    if (previewUrl.current) URL.revokeObjectURL(previewUrl.current);
+  }, []);
+
   const pickImage = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -64,13 +70,15 @@ export function AdminFoodFormPage() {
       setMessage("Please select a valid image file.");
       return;
     }
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      setForm((current) => ({ ...current, image: String(reader.result) }));
-      setMessage(`${file.name} selected.`);
-    };
-    reader.readAsDataURL(file);
+    if (file.size > 12 * 1024 * 1024) {
+      setMessage("Food photos must be smaller than 12 MB.");
+      return;
+    }
+    if (previewUrl.current) URL.revokeObjectURL(previewUrl.current);
+    previewUrl.current = URL.createObjectURL(file);
+    setImageFile(file);
+    setForm((current) => ({ ...current, image: previewUrl.current || current.image }));
+    setMessage(`${file.name} selected. It will be optimized before upload.`);
   };
 
   const saveFood = async (event: FormEvent) => {
@@ -85,33 +93,49 @@ export function AdminFoodFormPage() {
       return;
     }
 
-    const nextFood: Food = {
-      id: existingFood?.id || `admin-${Date.now()}`,
-      slug: form.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""),
-      name: form.name.trim(),
-      category: form.category,
-      description: form.description.trim() || `Fresh ${form.name.trim()} prepared by Savoury's kitchen.`,
-      price,
-      image: form.image || "/images/savoury-hero.png",
-      ingredients: [form.category, "Savoury seasoning"],
-      calories: Number.isFinite(calories) ? calories : 0,
-      prepTime: Number.isFinite(prepTime) ? prepTime : 20,
-      stockQuantity: Number.isFinite(stockQuantity) ? Math.max(0, Math.floor(stockQuantity)) : 50,
-      rating: existingFood?.rating || 4.8,
-      reviews: existingFood?.reviews || 0,
-      popularity: existingFood?.popularity || 75,
-      tags: [form.category, "Admin"],
-      isRecommended: true,
-      isNew: !existingFood,
-    };
-
+    setSaving(true);
     try {
-      const savedFood = await saveFoodToDatabase(nextFood);
-      saveAdminFood(savedFood);
-      await queryClient.invalidateQueries({ queryKey: foodKeys.all });
+      let imageUrl = form.image || "/images/savoury-hero.png";
+      if (imageFile) {
+        setMessage("Optimizing and uploading food photo...");
+        imageUrl = await uploadFoodImage(imageFile);
+      } else if (imageUrl.startsWith("data:image/")) {
+        setMessage("Moving the existing photo to secure storage...");
+        imageUrl = await uploadFoodImage(await dataUrlToImageFile(imageUrl, `${form.name || "food"}.jpg`));
+      }
+
+      setMessage(existingFood ? "Updating food..." : "Saving food...");
+      const nextFood: Food = {
+        id: existingFood?.id || `admin-${Date.now()}`,
+        slug: form.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""),
+        name: form.name.trim(),
+        category: form.category,
+        description: form.description.trim() || `Fresh ${form.name.trim()} prepared by Savoury's kitchen.`,
+        price,
+        image: imageUrl,
+        ingredients: [form.category, "Savoury seasoning"],
+        calories: Number.isFinite(calories) ? calories : 0,
+        prepTime: Number.isFinite(prepTime) ? prepTime : 20,
+        stockQuantity: Number.isFinite(stockQuantity) ? Math.max(0, Math.floor(stockQuantity)) : 50,
+        rating: existingFood?.rating || 4.8,
+        reviews: existingFood?.reviews || 0,
+        popularity: existingFood?.popularity || 75,
+        tags: [form.category, "Admin"],
+        isRecommended: true,
+        isNew: !existingFood,
+      };
+      const categoryId = menuCategories.find((category) => category.name === form.category)?.id;
+      const savedFood = await saveFoodToDatabase(nextFood, categoryId);
+      queryClient.setQueryData<Food[]>(foodKeys.all, (current = []) => {
+        const exists = current.some((food) => food.id === savedFood.id);
+        return exists ? current.map((food) => food.id === savedFood.id ? savedFood : food) : [savedFood, ...current];
+      });
       navigate("/admin/menu", { replace: true });
+      void queryClient.invalidateQueries({ queryKey: foodKeys.all });
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not save food to Supabase.");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -154,7 +178,7 @@ export function AdminFoodFormPage() {
               <Input placeholder="Calories" type="number" min={0} value={form.calories} onChange={(event) => setForm({ ...form, calories: event.target.value })} />
               <Input placeholder="Stock quantity" type="number" min={0} value={form.stockQuantity} onChange={(event) => setForm({ ...form, stockQuantity: event.target.value })} />
               <textarea className="min-h-32 rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm font-semibold text-zinc-950 outline-none placeholder:text-zinc-500 dark:border-white/10 dark:bg-zinc-950 dark:text-white md:col-span-2" placeholder="Description" value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} />
-              <Button className="md:col-span-2" type="submit" size="lg"><Save className="h-5 w-5" /> {existingFood ? "Update Food" : "Save Food"}</Button>
+              <Button className="md:col-span-2" type="submit" size="lg" disabled={saving}>{saving ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />} {saving ? "Saving..." : existingFood ? "Update Food" : "Save Food"}</Button>
             </div>
           </CardContent>
         </Card>

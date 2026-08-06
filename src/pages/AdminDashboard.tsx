@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
-import { Activity, ArrowRight, BarChart3, CheckCircle2, Clock, ListChecks, PackagePlus, Star, Users, XCircle, type LucideIcon } from "lucide-react";
+import { Activity, ArrowRight, BarChart3, CheckCircle2, Clock, ListChecks, LoaderCircle, PackagePlus, Star, Users, XCircle, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
@@ -53,6 +53,7 @@ export function AdminDashboard() {
   const [repForm, setRepForm] = useState({ fullName: "", email: "", phone: "" });
   const [kitchenForm, setKitchenForm] = useState({ fullName: "", email: "", phone: "" });
   const [accessCredentials, setAccessCredentials] = useState<{ email: string; password: string; title: string } | null>(null);
+  const [adminAction, setAdminAction] = useState<string | null>(null);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 30000);
@@ -114,6 +115,7 @@ export function AdminDashboard() {
       setFeedback("Provide sales representative name and email.");
       return;
     }
+    setAdminAction("create-rep");
     try {
       const saved = await saveAdminSalesRepresentative({
         fullName: repForm.fullName,
@@ -122,7 +124,11 @@ export function AdminDashboard() {
         status: "active",
         permissions: ["discounts", "reports"],
       });
-      await queryClient.invalidateQueries({ queryKey: adminDashboardKeys.salesReps });
+      queryClient.setQueryData<SalesRepresentative[]>(adminDashboardKeys.salesReps, (current = []) => {
+        const exists = current.some((rep) => rep.id === saved.id);
+        return exists ? current.map((rep) => rep.id === saved.id ? saved : rep) : [saved, ...current];
+      });
+      void queryClient.invalidateQueries({ queryKey: adminDashboardKeys.salesReps });
       setRepForm({ fullName: "", email: "", phone: "" });
       if (saved.temporaryPassword) {
         setAccessCredentials({ email: saved.email, password: saved.temporaryPassword, title: "POS account created" });
@@ -132,10 +138,13 @@ export function AdminDashboard() {
       }
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : "Could not create the Sales Representative login.");
+    } finally {
+      setAdminAction(null);
     }
   };
 
   const resetRepPassword = async (rep: SalesRepresentative) => {
+    setAdminAction(`reset-rep-${rep.id}`);
     try {
       const password = await resetSalesRepresentativePassword(rep.email);
       if (!password) throw new Error("The password service returned no temporary password.");
@@ -143,18 +152,22 @@ export function AdminDashboard() {
       setFeedback("A new temporary POS password has been generated.");
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : "Could not reset sales representative password.");
+    } finally {
+      setAdminAction(null);
     }
   };
 
   const toggleRep = async (rep: SalesRepresentative) => {
-    if (rep.status === "active") {
-      await suspendAdminSalesRepresentative(rep);
-      await queryClient.invalidateQueries({ queryKey: adminDashboardKeys.salesReps });
-      setFeedback(`${rep.fullName} has been suspended.`);
-    } else {
-      await activateAdminSalesRepresentative(rep);
-      await queryClient.invalidateQueries({ queryKey: adminDashboardKeys.salesReps });
-      setFeedback(`${rep.fullName} has been reactivated.`);
+    setAdminAction(`toggle-rep-${rep.id}`);
+    try {
+      const saved = rep.status === "active" ? await suspendAdminSalesRepresentative(rep) : await activateAdminSalesRepresentative(rep);
+      queryClient.setQueryData<SalesRepresentative[]>(adminDashboardKeys.salesReps, (current = []) => current.map((item) => item.id === rep.id ? saved : item));
+      setFeedback(`${rep.fullName} has been ${rep.status === "active" ? "suspended" : "reactivated"}.`);
+      void queryClient.invalidateQueries({ queryKey: adminDashboardKeys.salesReps });
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : "Could not update the Sales Representative.");
+    } finally {
+      setAdminAction(null);
     }
   };
 
@@ -163,34 +176,48 @@ export function AdminDashboard() {
       setFeedback("Provide kitchen staff name and email.");
       return;
     }
+    setAdminAction("create-kitchen");
     try {
       const saved = await saveKitchenStaff({ ...kitchenForm, phone: kitchenForm.phone || undefined, status: "active" });
-      await queryClient.invalidateQueries({ queryKey: ["admin-kitchen-staff"] });
+      queryClient.setQueryData<KitchenStaff[]>(["admin-kitchen-staff"], (current = []) => {
+        const exists = current.some((staff) => staff.id === saved.id);
+        return exists ? current.map((staff) => staff.id === saved.id ? saved : staff) : [saved, ...current];
+      });
+      void queryClient.invalidateQueries({ queryKey: ["admin-kitchen-staff"] });
       setKitchenForm({ fullName: "", email: "", phone: "" });
       if (saved.temporaryPassword) setAccessCredentials({ email: saved.email, password: saved.temporaryPassword, title: "Kitchen account created" });
       setFeedback(saved.temporaryPassword ? "Kitchen staff login created successfully." : "Kitchen staff profile updated. Reset the password to issue new credentials.");
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : "Could not create the kitchen account.");
+    } finally {
+      setAdminAction(null);
     }
   };
 
   const toggleKitchenStaff = async (staff: KitchenStaff) => {
+    setAdminAction(`toggle-kitchen-${staff.id}`);
     try {
-      await saveKitchenStaff({ fullName: staff.fullName, email: staff.email, phone: staff.phone, status: staff.status === "active" ? "suspended" : "active" });
-      await queryClient.invalidateQueries({ queryKey: ["admin-kitchen-staff"] });
+      const saved = await saveKitchenStaff({ fullName: staff.fullName, email: staff.email, phone: staff.phone, status: staff.status === "active" ? "suspended" : "active" });
+      queryClient.setQueryData<KitchenStaff[]>(["admin-kitchen-staff"], (current = []) => current.map((item) => item.id === staff.id ? saved : item));
+      void queryClient.invalidateQueries({ queryKey: ["admin-kitchen-staff"] });
       setFeedback(`${staff.fullName} has been ${staff.status === "active" ? "suspended" : "activated"}.`);
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : "Could not update kitchen staff.");
+    } finally {
+      setAdminAction(null);
     }
   };
 
   const resetKitchenStaffPassword = async (staff: KitchenStaff) => {
+    setAdminAction(`reset-kitchen-${staff.id}`);
     try {
       const password = await resetKitchenPassword(staff.email);
       setAccessCredentials({ email: staff.email, password, title: "Kitchen password reset" });
       setFeedback("A new temporary kitchen password has been generated.");
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : "Could not reset the kitchen password.");
+    } finally {
+      setAdminAction(null);
     }
   };
 
@@ -380,7 +407,7 @@ export function AdminDashboard() {
                 <Input placeholder="Full name" value={repForm.fullName} onChange={(event) => setRepForm({ ...repForm, fullName: event.target.value })} />
                 <Input type="email" placeholder="Email" value={repForm.email} onChange={(event) => setRepForm({ ...repForm, email: event.target.value })} />
                 <Input placeholder="Phone" value={repForm.phone} onChange={(event) => setRepForm({ ...repForm, phone: event.target.value })} />
-                <Button onClick={saveRep}>Create POS User</Button>
+                <Button disabled={adminAction !== null} onClick={saveRep}>{adminAction === "create-rep" && <LoaderCircle className="h-4 w-4 animate-spin" />}{adminAction === "create-rep" ? "Creating..." : "Create POS User"}</Button>
               </div>
             </div>
             <div className="overflow-x-auto">
@@ -396,8 +423,8 @@ export function AdminDashboard() {
                       <td><span className={`rounded-full px-3 py-1 text-xs font-black capitalize ${rep.status === "active" ? "bg-savoury-accent text-savoury-primary dark:bg-savoury-primary/10" : "bg-red-500/10 text-red-500"}`}>{rep.status}</span></td>
                       <td className="capitalize">{rep.permissions.join(", ") || "POS only"}</td>
                       <td className="flex gap-2 py-3" onClick={(event) => event.stopPropagation()}>
-                        <Button size="sm" variant="outline" onClick={() => toggleRep(rep)}>{rep.status === "active" ? "Suspend" : "Activate"}</Button>
-                        <Button size="sm" variant="outline" onClick={() => resetRepPassword(rep)}>Reset Password</Button>
+                        <Button size="sm" variant="outline" disabled={adminAction !== null} onClick={() => toggleRep(rep)}>{adminAction === `toggle-rep-${rep.id}` && <LoaderCircle className="h-4 w-4 animate-spin" />}{rep.status === "active" ? "Suspend" : "Activate"}</Button>
+                        <Button size="sm" variant="outline" disabled={adminAction !== null} onClick={() => resetRepPassword(rep)}>{adminAction === `reset-rep-${rep.id}` && <LoaderCircle className="h-4 w-4 animate-spin" />}Reset Password</Button>
                       </td>
                     </tr>
                   ))}
@@ -418,7 +445,7 @@ export function AdminDashboard() {
                 <Input placeholder="Full name" value={kitchenForm.fullName} onChange={(event) => setKitchenForm({ ...kitchenForm, fullName: event.target.value })} />
                 <Input type="email" placeholder="Email" value={kitchenForm.email} onChange={(event) => setKitchenForm({ ...kitchenForm, email: event.target.value })} />
                 <Input placeholder="Phone" value={kitchenForm.phone} onChange={(event) => setKitchenForm({ ...kitchenForm, phone: event.target.value })} />
-                <Button onClick={createKitchenStaff}>Create Kitchen User</Button>
+                <Button disabled={adminAction !== null} onClick={createKitchenStaff}>{adminAction === "create-kitchen" && <LoaderCircle className="h-4 w-4 animate-spin" />}{adminAction === "create-kitchen" ? "Creating..." : "Create Kitchen User"}</Button>
               </div>
             </div>
             <div className="overflow-x-auto">
@@ -441,8 +468,8 @@ export function AdminDashboard() {
                       <td>{staff.mustChangePassword ? "Change required" : "Private password set"}</td>
                       <td className="flex flex-wrap gap-2 py-3">
                         <Button size="sm" onClick={(event) => { event.stopPropagation(); navigate(`/admin/kitchen-staff/${staff.id}`); }}>View Activity</Button>
-                        <Button size="sm" variant="outline" onClick={(event) => { event.stopPropagation(); void toggleKitchenStaff(staff); }}>{staff.status === "active" ? "Suspend" : "Activate"}</Button>
-                        <Button size="sm" variant="outline" onClick={(event) => { event.stopPropagation(); void resetKitchenStaffPassword(staff); }}>Reset Password</Button>
+                        <Button size="sm" variant="outline" disabled={adminAction !== null} onClick={(event) => { event.stopPropagation(); void toggleKitchenStaff(staff); }}>{adminAction === `toggle-kitchen-${staff.id}` && <LoaderCircle className="h-4 w-4 animate-spin" />}{staff.status === "active" ? "Suspend" : "Activate"}</Button>
+                        <Button size="sm" variant="outline" disabled={adminAction !== null} onClick={(event) => { event.stopPropagation(); void resetKitchenStaffPassword(staff); }}>{adminAction === `reset-kitchen-${staff.id}` && <LoaderCircle className="h-4 w-4 animate-spin" />}Reset Password</Button>
                       </td>
                     </tr>
                   ))}

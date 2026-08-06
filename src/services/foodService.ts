@@ -38,7 +38,7 @@ export async function fetchFoods(): Promise<Food[]> {
   if (!isSupabaseConfigured || !supabase) return foods;
   const { data, error } = await supabase
     .from("foods")
-    .select("*, categories(name)")
+    .select("id, name, slug, description, price, image_url, ingredients, calories, preparation_time, rating, popularity, stock_quantity, is_available, is_special, is_recommended, categories(name)")
     .eq("is_available", true)
     .order("popularity", { ascending: false });
   if (error) throw error;
@@ -82,12 +82,17 @@ export async function fetchCoupons(): Promise<Coupon[]> {
   })) as Coupon[];
 }
 
-export async function saveFoodToDatabase(food: Food): Promise<Food> {
+export async function saveFoodToDatabase(food: Food, categoryId?: string): Promise<Food> {
   if (!isSupabaseConfigured || !supabase) return food;
 
-  const { data: category } = await supabase.from("categories").select("id").eq("name", food.category).maybeSingle();
+  let resolvedCategoryId = categoryId;
+  if (!resolvedCategoryId) {
+    const { data: category, error: categoryError } = await supabase.from("categories").select("id").eq("name", food.category).maybeSingle();
+    if (categoryError) throw categoryError;
+    resolvedCategoryId = category?.id;
+  }
   const payload: Record<string, unknown> = {
-    category_id: category?.id || null,
+    category_id: resolvedCategoryId || null,
     name: food.name,
     slug: food.slug,
     description: food.description,
@@ -107,7 +112,7 @@ export async function saveFoodToDatabase(food: Food): Promise<Food> {
   const { data, error } = await supabase
     .from("foods")
     .upsert(food.id.startsWith("admin-") ? payload : { id: food.id, ...payload }, { onConflict: "slug" })
-    .select("*, categories(name)")
+    .select("id, name, slug, description, price, image_url, ingredients, calories, preparation_time, rating, popularity, stock_quantity, is_available, is_special, is_recommended, categories(name)")
     .single();
 
   if (error) throw error;

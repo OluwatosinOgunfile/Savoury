@@ -7,6 +7,7 @@ import {
   Clock,
   CheckCircle2,
   Download,
+  LoaderCircle,
   Minus,
   PauseCircle,
   PackageCheck,
@@ -345,13 +346,13 @@ export function SalesRepPosPage() {
 
     try {
       const saved = await createPosReceipt(receipt);
-      await queryClient.invalidateQueries({ queryKey: foodKeys.all });
-      await queryClient.invalidateQueries({ queryKey: ["pos-counter-orders", profile.id] });
       clearOrder();
       setPaymentOpen(false);
       setReceiptOpen(saved);
       setReceipts(getLocalReceipts());
       setToast(saved.synced ? "Payment successful. Receipt generated." : "Payment saved offline. Receipt generated.");
+      void queryClient.invalidateQueries({ queryKey: foodKeys.all });
+      void queryClient.invalidateQueries({ queryKey: ["pos-counter-orders", profile.id] });
     } catch (error) {
       setToast(error instanceof Error ? error.message : "Network error. Could not complete payment.");
     }
@@ -646,10 +647,11 @@ function Line({ label, value }: { label: string; value: string }) {
   return <div className="flex justify-between font-bold text-zinc-500"><span>{label}</span><span>{value}</span></div>;
 }
 
-function PaymentModal({ total, onClose, onComplete }: { total: number; onClose: () => void; onComplete: (payment: PosPayment) => void }) {
+function PaymentModal({ total, onClose, onComplete }: { total: number; onClose: () => void; onComplete: (payment: PosPayment) => Promise<void> }) {
   const [method, setMethod] = useState<PosPaymentMethod>("cash");
   const [amountPaid, setAmountPaid] = useState(total);
   const [split, setSplit] = useState({ cash: 0, card: 0, transfer: 0 });
+  const [processing, setProcessing] = useState(false);
   const splitTotal = split.cash + split.card + split.transfer;
   const paid = method === "split" ? splitTotal : amountPaid;
   const change = Math.max(0, paid - total);
@@ -664,7 +666,7 @@ function PaymentModal({ total, onClose, onComplete }: { total: number; onClose: 
               <p className="text-xs font-black uppercase tracking-[0.2em] text-savoury-primary">Payment</p>
               <h2 className="text-2xl font-black">{formatCurrency(total)}</h2>
             </div>
-            <button onClick={onClose} className="rounded-full p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10"><X className="h-5 w-5" /></button>
+            <button disabled={processing} onClick={onClose} className="rounded-full p-2 text-zinc-500 hover:bg-zinc-100 disabled:opacity-50 dark:hover:bg-white/10"><X className="h-5 w-5" /></button>
           </div>
           <div className="grid grid-cols-4 gap-2">
             {(["cash", "card", "transfer", "split"] as PosPaymentMethod[]).map((item) => (
@@ -683,8 +685,8 @@ function PaymentModal({ total, onClose, onComplete }: { total: number; onClose: 
             <PosMetric label="Paid" value={formatCurrency(paid)} />
             <PosMetric label="Change" value={formatCurrency(change)} />
           </div>
-          <Button className="w-full" size="lg" disabled={!canPay} onClick={() => onComplete({ method, amountPaid: paid, change, split: method === "split" ? (["cash", "card", "transfer"] as PaymentMethod[]).filter((item) => split[item] > 0).map((item) => ({ method: item, amount: split[item] })) : undefined })}>
-            Complete Payment
+          <Button className="w-full" size="lg" disabled={!canPay || processing} onClick={async () => { setProcessing(true); try { await onComplete({ method, amountPaid: paid, change, split: method === "split" ? (["cash", "card", "transfer"] as PaymentMethod[]).filter((item) => split[item] > 0).map((item) => ({ method: item, amount: split[item] })) : undefined }); } finally { setProcessing(false); } }}>
+            {processing && <LoaderCircle className="h-5 w-5 animate-spin" />}{processing ? "Processing Payment..." : "Complete Payment"}
           </Button>
         </CardContent>
       </Card>

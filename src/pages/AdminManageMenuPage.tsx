@@ -1,13 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Edit, PackagePlus, RotateCcw, Search, Trash2 } from "lucide-react";
+import { ArrowLeft, Edit, LoaderCircle, PackagePlus, RotateCcw, Search, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { categories, foods } from "@/data/catalog";
 import { formatCurrency } from "@/lib/utils";
-import { deleteAdminFood, mergeAdminFoods } from "@/services/adminMenuStorage";
 import { deleteFoodFromDatabase, fetchCategories, fetchFoods, foodKeys } from "@/services/foodService";
 import type { Food, FoodCategory } from "@/types";
 
@@ -16,14 +15,15 @@ export function AdminManageMenuPage() {
   const queryClient = useQueryClient();
   const { data: menuFoods = foods } = useQuery({ queryKey: foodKeys.all, queryFn: fetchFoods });
   const { data: menuCategories = categories } = useQuery({ queryKey: foodKeys.categories, queryFn: fetchCategories });
-  const [adminFoods, setAdminFoods] = useState<Food[]>(() => mergeAdminFoods(menuFoods));
+  const [adminFoods, setAdminFoods] = useState<Food[]>(menuFoods);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<"All" | FoodCategory>("All");
   const [deleteTarget, setDeleteTarget] = useState<Food | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [feedback, setFeedback] = useState("Manage every food item from one dedicated page.");
 
   useEffect(() => {
-    setAdminFoods(mergeAdminFoods(menuFoods));
+    setAdminFoods(menuFoods);
   }, [menuFoods]);
 
   const filteredFoods = useMemo(() => {
@@ -36,24 +36,26 @@ export function AdminManageMenuPage() {
   }, [adminFoods, category, query]);
 
   const resetMenu = () => {
-    localStorage.removeItem("savoury-admin-foods");
     setAdminFoods(menuFoods);
     setDeleteTarget(null);
     setFeedback("Menu manager reset to Supabase data.");
   };
 
   const removeFood = async (food: Food) => {
+    setDeleting(true);
     try {
       await deleteFoodFromDatabase(food.id);
-      await queryClient.invalidateQueries({ queryKey: foodKeys.all });
+      queryClient.setQueryData<Food[]>(foodKeys.all, (current = []) => current.filter((item) => item.id !== food.id));
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : "Could not delete food from Supabase.");
+      setDeleting(false);
       return;
     }
-    deleteAdminFood(food.id);
     setAdminFoods((current) => current.filter((item) => item.id !== food.id));
     setDeleteTarget(null);
     setFeedback(`${food.name} removed from the live menu.`);
+    setDeleting(false);
+    void queryClient.invalidateQueries({ queryKey: foodKeys.all });
   };
 
   return (
@@ -126,8 +128,8 @@ export function AdminManageMenuPage() {
               <h2 className="text-xl font-black">Delete {deleteTarget.name}?</h2>
               <p className="mt-2 text-sm font-semibold text-zinc-500">This hides the item from the live menu while keeping old order records intact.</p>
               <div className="mt-5 flex gap-2">
-                <Button onClick={() => removeFood(deleteTarget)}>Confirm Delete</Button>
-                <Button variant="outline" onClick={() => setDeleteTarget(null)}>Cancel</Button>
+                <Button disabled={deleting} onClick={() => removeFood(deleteTarget)}>{deleting && <LoaderCircle className="h-4 w-4 animate-spin" />}{deleting ? "Deleting..." : "Confirm Delete"}</Button>
+                <Button variant="outline" disabled={deleting} onClick={() => setDeleteTarget(null)}>Cancel</Button>
               </div>
             </CardContent>
           </Card>
