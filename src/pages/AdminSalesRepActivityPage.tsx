@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
 import { fetchAdminSalesRepresentativeActivity } from "@/services/adminDashboardService";
 import { formatCurrency } from "@/lib/utils";
+import { PageLoader } from "@/components/PageLoader";
 
 export function AdminSalesRepActivityPage() {
   const { repId = "" } = useParams();
@@ -15,7 +16,7 @@ export function AdminSalesRepActivityPage() {
     refetchInterval: 30000,
   });
 
-  if (isLoading) return <main className="app-container grid min-h-[60vh] place-items-center"><div className="h-10 w-10 animate-spin rounded-full border-2 border-savoury-primary border-t-transparent" /></main>;
+  if (isLoading) return <PageLoader compact />;
 
   if (error || !data) {
     return (

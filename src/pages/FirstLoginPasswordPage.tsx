@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useAuth } from "@/hooks/useAuth";
 import { completeFirstLoginPasswordChange } from "@/services/authService";
+import { PageLoader } from "@/components/PageLoader";
 
 const passwordSchema = z
   .string()
@@ -24,7 +25,7 @@ export function FirstLoginPasswordPage() {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
-  if (loading) return <main className="app-container grid min-h-[60vh] place-items-center"><div className="h-10 w-10 animate-spin rounded-full border-2 border-savoury-primary border-t-transparent" /></main>;
+  if (loading) return <PageLoader compact />;
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   if (profile?.role !== "sales_rep" && profile?.role !== "kitchen") return <Navigate to={profile?.role === "admin" ? "/admin" : "/account"} replace />;
   const staffRole = profile.role;

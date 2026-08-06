@@ -3,23 +3,13 @@ import { Navigate, useLocation } from "react-router-dom";
 import { BadgeDollarSign } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/Card";
 import { useAuth } from "@/hooks/useAuth";
+import { PageLoader } from "@/components/PageLoader";
 
 export function RequireSalesRep({ children }: { children: ReactNode }) {
   const { loading, isAuthenticated, profile } = useAuth();
   const location = useLocation();
 
-  if (loading) {
-    return (
-      <main className="app-container grid min-h-[50vh] place-items-center py-10">
-        <Card className="max-w-md">
-          <CardContent className="text-center">
-            <div className="mx-auto h-10 w-10 animate-spin rounded-full border-2 border-savoury-primary border-t-transparent" />
-            <p className="mt-4 font-black">Checking POS access...</p>
-          </CardContent>
-        </Card>
-      </main>
-    );
-  }
+  if (loading) return <PageLoader compact />;
 
   if (!isAuthenticated) return <Navigate to="/login" state={{ from: location }} replace />;
 

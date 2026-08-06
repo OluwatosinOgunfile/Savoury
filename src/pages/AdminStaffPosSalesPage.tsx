@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { fetchAdminSalesRepresentativeActivity } from "@/services/adminDashboardService";
 import { formatCurrency } from "@/lib/utils";
+import { PageLoader } from "@/components/PageLoader";
 
 export function AdminStaffPosSalesPage() {
   const { repId = "" } = useParams();
@@ -29,7 +30,7 @@ export function AdminStaffPosSalesPage() {
     });
   }, [payment, query, sales]);
 
-  if (isLoading) return <main className="app-container grid min-h-[60vh] place-items-center"><div className="h-10 w-10 animate-spin rounded-full border-2 border-savoury-primary border-t-transparent" /></main>;
+  if (isLoading) return <PageLoader compact />;
   if (error || !data) return <main className="app-container py-8"><Link to={`/admin/sales-representatives/${repId}`}><Button variant="outline"><ArrowLeft className="h-4 w-4" /> Staff Activity</Button></Link><Card className="mt-5"><CardContent><h1 className="text-xl font-black">POS sales unavailable</h1><p className="mt-2 text-sm font-semibold text-zinc-500">{error instanceof Error ? error.message : "This staff profile could not be found."}</p></CardContent></Card></main>;
 
   const rep = data.representative;

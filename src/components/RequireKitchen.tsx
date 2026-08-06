@@ -1,11 +1,12 @@
 import type { ReactNode } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { PageLoader } from "@/components/PageLoader";
 
 export function RequireKitchen({ children }: { children: ReactNode }) {
   const { loading, isAuthenticated, profile } = useAuth();
   const location = useLocation();
-  if (loading) return <main className="app-container grid min-h-[60vh] place-items-center"><div className="h-10 w-10 animate-spin rounded-full border-2 border-savoury-primary border-t-transparent" /></main>;
+  if (loading) return <PageLoader compact />;
   if (!isAuthenticated) return <Navigate to="/login" state={{ from: location }} replace />;
   if (profile?.role === "kitchen" && profile.accountStatus === "active" && profile.mustChangePassword) return <Navigate to="/change-password" replace />;
   if (profile?.role !== "kitchen") return <Navigate to={profile?.role === "admin" ? "/admin" : profile?.role === "sales_rep" ? "/pos" : "/account"} replace />;

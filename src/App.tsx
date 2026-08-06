@@ -1,36 +1,38 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { Route, Routes } from "react-router-dom";
 import { Layout } from "@/components/Layout";
-import { AccountPage } from "@/pages/AccountPage";
-import { AdminDashboard } from "@/pages/AdminDashboard";
-import { AdminActivityPage } from "@/pages/AdminActivityPage";
-import { AdminFoodFormPage } from "@/pages/AdminFoodFormPage";
-import { AdminManageMenuPage } from "@/pages/AdminManageMenuPage";
-import { AdminOrderDetailsPage } from "@/pages/AdminOrderDetailsPage";
-import { AdminOrdersPage } from "@/pages/AdminOrdersPage";
-import { AdminSalesRepActivityPage } from "@/pages/AdminSalesRepActivityPage";
-import { AdminStaffActivityTimelinePage } from "@/pages/AdminStaffActivityTimelinePage";
-import { AdminStaffPosSalesPage } from "@/pages/AdminStaffPosSalesPage";
-import { AdminKitchenStaffActivityPage } from "@/pages/AdminKitchenStaffActivityPage";
-import { AuthCallbackPage } from "@/pages/AuthCallbackPage";
-import { CartPage } from "@/pages/CartPage";
 import { RequireAdmin } from "@/components/RequireAdmin";
-import { CheckoutPage } from "@/pages/CheckoutPage";
-import { FoodDetailsPage } from "@/pages/FoodDetailsPage";
-import { FirstLoginPasswordPage } from "@/pages/FirstLoginPasswordPage";
-import { HomePage } from "@/pages/HomePage";
-import { LoginPage } from "@/pages/LoginPage";
-import { MenuPage } from "@/pages/MenuPage";
-import { NotFoundPage } from "@/pages/NotFoundPage";
-import { PrivacyPage } from "@/pages/PrivacyPage";
 import { RequireSalesRep } from "@/components/RequireSalesRep";
 import { RequireCustomer } from "@/components/RequireCustomer";
 import { RequireKitchen } from "@/components/RequireKitchen";
-import { SalesRepPosPage } from "@/pages/SalesRepPosPage";
-import { KitchenDashboardPage } from "@/pages/KitchenDashboardPage";
-import { SignupPage } from "@/pages/SignupPage";
-import { TermsPage } from "@/pages/TermsPage";
-import { TrackingPage } from "@/pages/TrackingPage";
+import { PageLoader } from "@/components/PageLoader";
+
+const AccountPage = lazy(() => import("@/pages/AccountPage").then((module) => ({ default: module.AccountPage })));
+const AdminDashboard = lazy(() => import("@/pages/AdminDashboard").then((module) => ({ default: module.AdminDashboard })));
+const AdminActivityPage = lazy(() => import("@/pages/AdminActivityPage").then((module) => ({ default: module.AdminActivityPage })));
+const AdminFoodFormPage = lazy(() => import("@/pages/AdminFoodFormPage").then((module) => ({ default: module.AdminFoodFormPage })));
+const AdminManageMenuPage = lazy(() => import("@/pages/AdminManageMenuPage").then((module) => ({ default: module.AdminManageMenuPage })));
+const AdminOrderDetailsPage = lazy(() => import("@/pages/AdminOrderDetailsPage").then((module) => ({ default: module.AdminOrderDetailsPage })));
+const AdminOrdersPage = lazy(() => import("@/pages/AdminOrdersPage").then((module) => ({ default: module.AdminOrdersPage })));
+const AdminSalesRepActivityPage = lazy(() => import("@/pages/AdminSalesRepActivityPage").then((module) => ({ default: module.AdminSalesRepActivityPage })));
+const AdminStaffActivityTimelinePage = lazy(() => import("@/pages/AdminStaffActivityTimelinePage").then((module) => ({ default: module.AdminStaffActivityTimelinePage })));
+const AdminStaffPosSalesPage = lazy(() => import("@/pages/AdminStaffPosSalesPage").then((module) => ({ default: module.AdminStaffPosSalesPage })));
+const AdminKitchenStaffActivityPage = lazy(() => import("@/pages/AdminKitchenStaffActivityPage").then((module) => ({ default: module.AdminKitchenStaffActivityPage })));
+const AuthCallbackPage = lazy(() => import("@/pages/AuthCallbackPage").then((module) => ({ default: module.AuthCallbackPage })));
+const CartPage = lazy(() => import("@/pages/CartPage").then((module) => ({ default: module.CartPage })));
+const CheckoutPage = lazy(() => import("@/pages/CheckoutPage").then((module) => ({ default: module.CheckoutPage })));
+const FoodDetailsPage = lazy(() => import("@/pages/FoodDetailsPage").then((module) => ({ default: module.FoodDetailsPage })));
+const FirstLoginPasswordPage = lazy(() => import("@/pages/FirstLoginPasswordPage").then((module) => ({ default: module.FirstLoginPasswordPage })));
+const HomePage = lazy(() => import("@/pages/HomePage").then((module) => ({ default: module.HomePage })));
+const LoginPage = lazy(() => import("@/pages/LoginPage").then((module) => ({ default: module.LoginPage })));
+const MenuPage = lazy(() => import("@/pages/MenuPage").then((module) => ({ default: module.MenuPage })));
+const NotFoundPage = lazy(() => import("@/pages/NotFoundPage").then((module) => ({ default: module.NotFoundPage })));
+const PrivacyPage = lazy(() => import("@/pages/PrivacyPage").then((module) => ({ default: module.PrivacyPage })));
+const SalesRepPosPage = lazy(() => import("@/pages/SalesRepPosPage").then((module) => ({ default: module.SalesRepPosPage })));
+const KitchenDashboardPage = lazy(() => import("@/pages/KitchenDashboardPage").then((module) => ({ default: module.KitchenDashboardPage })));
+const SignupPage = lazy(() => import("@/pages/SignupPage").then((module) => ({ default: module.SignupPage })));
+const TermsPage = lazy(() => import("@/pages/TermsPage").then((module) => ({ default: module.TermsPage })));
+const TrackingPage = lazy(() => import("@/pages/TrackingPage").then((module) => ({ default: module.TrackingPage })));
 
 export function App() {
   const [darkMode, setDarkMode] = useState(() => {
@@ -53,7 +55,7 @@ export function App() {
   }, []);
 
   return (
-    <Routes>
+    <Suspense fallback={<PageLoader />}><Routes>
       <Route element={<Layout darkMode={darkMode} setDarkMode={setDarkMode} />}>
         <Route index element={<HomePage />} />
         <Route path="menu" element={<MenuPage />} />
@@ -83,6 +85,6 @@ export function App() {
         <Route path="terms" element={<TermsPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
-    </Routes>
+    </Routes></Suspense>
   );
 }
