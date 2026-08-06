@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { BellRing, ChefHat, Clock3, LogOut, MonitorCheck, UtensilsCrossed, Volume2, VolumeX } from "lucide-react";
+import { BellRing, Boxes, ChefHat, Clock3, History, LogOut, MonitorCheck, PackagePlus, PackageX, Search, UtensilsCrossed, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
+import { Input } from "@/components/ui/Input";
 import { useAuth } from "@/hooks/useAuth";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
-import { fetchKitchenOrders, updateKitchenOrderStatus, type KitchenOrder, type KitchenOrderStatus } from "@/services/kitchenService";
+import { adjustKitchenStock, fetchKitchenOrders, fetchKitchenStock, fetchKitchenStockAdjustments, updateKitchenOrderStatus, type KitchenOrder, type KitchenOrderStatus, type KitchenStockAdjustment, type KitchenStockItem } from "@/services/kitchenService";
 import { playAlertTone, primeAlertAudio } from "@/services/alertSound";
 
 const stages: Array<{ id: KitchenOrderStatus; title: string; subtitle: string }> = [
@@ -21,6 +22,8 @@ export function KitchenDashboardPage() {
   const [now, setNow] = useState(Date.now());
   const [message, setMessage] = useState("");
   const [updating, setUpdating] = useState<string | null>(null);
+  const [activeView, setActiveView] = useState<"orders" | "stock">("orders");
+  const [updatingStock, setUpdatingStock] = useState<string | null>(null);
   const [orderSoundEnabled, setOrderSoundEnabled] = useState(() => localStorage.getItem("savoury-kitchen-order-sound") !== "false");
   const [alertsSetupComplete, setAlertsSetupComplete] = useState(() => localStorage.getItem("savoury-kitchen-alerts-setup") === "true");
   const [audioReady, setAudioReady] = useState(false);
@@ -29,6 +32,8 @@ export function KitchenDashboardPage() {
   const ordersInitialized = useRef(false);
   const dashboardOpenedAt = useRef(Date.now());
   const { data: orders = [], isLoading, isFetched, error } = useQuery({ queryKey: ["kitchen-orders"], queryFn: fetchKitchenOrders, refetchInterval: 5000 });
+  const { data: stock = [], error: stockError } = useQuery({ queryKey: ["kitchen-stock"], queryFn: fetchKitchenStock, enabled: activeView === "stock", refetchInterval: 10000 });
+  const { data: stockAdjustments = [] } = useQuery({ queryKey: ["kitchen-stock-adjustments"], queryFn: fetchKitchenStockAdjustments, enabled: activeView === "stock", refetchInterval: 15000 });
 
   const unlockOrderSound = useCallback(async () => {
     if (!orderSoundEnabled) return false;
@@ -151,6 +156,23 @@ export function KitchenDashboardPage() {
     }
   };
 
+  const updateStock = async (item: KitchenStockItem, input: { quantityChange?: number; reason: string; available?: boolean }) => {
+    setUpdatingStock(item.id);
+    try {
+      await adjustKitchenStock({ foodId: item.id, ...input });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["kitchen-stock"] }),
+        queryClient.invalidateQueries({ queryKey: ["kitchen-stock-adjustments"] }),
+        queryClient.invalidateQueries({ queryKey: ["foods"] }),
+      ]);
+      setMessage(`${item.name} stock updated successfully.`);
+    } catch (stockUpdateError) {
+      setMessage(stockUpdateError instanceof Error ? stockUpdateError.message : "Could not update food stock.");
+    } finally {
+      setUpdatingStock(null);
+    }
+  };
+
   return (
     <main className="min-h-screen bg-zinc-50 pb-20 dark:bg-[#0d0d0d]">
       <section className="border-b border-zinc-200 bg-white px-4 py-4 dark:border-white/10 dark:bg-[#151515]">
@@ -167,10 +189,15 @@ export function KitchenDashboardPage() {
       </section>
 
       <div className="mx-auto max-w-[1500px] px-4 py-5">
-        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="mb-5 inline-flex rounded-xl border border-zinc-200 bg-white p-1 shadow-sm dark:border-white/10 dark:bg-[#171717]">
+          <button onClick={() => setActiveView("orders")} className={`flex h-11 items-center gap-2 rounded-lg px-4 text-sm font-black transition ${activeView === "orders" ? "bg-savoury-primary text-white" : "text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10"}`}><ChefHat className="h-4 w-4" /> Order Queue</button>
+          <button onClick={() => setActiveView("stock")} className={`flex h-11 items-center gap-2 rounded-lg px-4 text-sm font-black transition ${activeView === "stock" ? "bg-savoury-primary text-white" : "text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10"}`}><Boxes className="h-4 w-4" /> Stock</button>
+        </div>
+        {message && <p className="mb-4 rounded-xl border border-savoury-primary/20 bg-savoury-primary/10 px-4 py-3 text-sm font-black text-savoury-primary">{message}</p>}
+
+        {activeView === "orders" && <><section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {stages.map((stage) => <Card key={stage.id}><CardContent className="flex items-center justify-between"><div><p className="text-xs font-black uppercase text-zinc-500">{stage.title}</p><p className="mt-1 text-3xl font-black">{counts[stage.id] || 0}</p></div><MonitorCheck className="h-7 w-7 text-savoury-primary" /></CardContent></Card>)}
         </section>
-        {message && <p className="mt-4 rounded-xl border border-savoury-primary/20 bg-savoury-primary/10 px-4 py-3 text-sm font-black text-savoury-primary">{message}</p>}
         {error && <p className="mt-4 rounded-xl bg-red-500/10 px-4 py-3 text-sm font-black text-red-500">{error instanceof Error ? error.message : "Could not load kitchen orders."}</p>}
 
         <section className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -184,10 +211,50 @@ export function KitchenDashboardPage() {
             </div>
           ))}
         </section>
+        </>}
+
+        {activeView === "stock" && <KitchenStockPanel items={stock} adjustments={stockAdjustments} updatingId={updatingStock} error={stockError} onUpdate={updateStock} />}
       </div>
     </main>
   );
 }
+
+function KitchenStockPanel({ items, adjustments, updatingId, error, onUpdate }: { items: KitchenStockItem[]; adjustments: KitchenStockAdjustment[]; updatingId: string | null; error: unknown; onUpdate: (item: KitchenStockItem, input: { quantityChange?: number; reason: string; available?: boolean }) => Promise<void> }) {
+  const [query, setQuery] = useState("");
+  const filtered = items.filter((item) => [item.name, item.category].join(" ").toLowerCase().includes(query.trim().toLowerCase()));
+  const lowStock = items.filter((item) => item.stockQuantity > 0 && item.stockQuantity <= 5).length;
+  const unavailable = items.filter((item) => !item.isAvailable || item.stockQuantity === 0).length;
+
+  return (
+    <section>
+      <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
+        <div><p className="text-xs font-black uppercase tracking-[0.2em] text-savoury-primary">Kitchen inventory</p><h2 className="mt-1 text-2xl font-black">Operational Stock</h2><p className="mt-1 text-sm font-semibold text-zinc-500">Restock quantities and control live menu availability.</p></div>
+        <div className="grid grid-cols-2 gap-2"><StockMetric label="Low stock" value={lowStock} tone="amber" /><StockMetric label="Unavailable" value={unavailable} tone="red" /></div>
+      </div>
+
+      <label className="mt-5 flex h-12 max-w-xl items-center gap-3 rounded-xl border border-zinc-200 bg-white px-4 dark:border-white/10 dark:bg-[#171717]"><Search className="h-4 w-4 text-zinc-400" /><input className="min-w-0 flex-1 bg-transparent text-sm font-bold outline-none" placeholder="Search food or category" value={query} onChange={(event) => setQuery(event.target.value)} /></label>
+      {Boolean(error) && <p className="mt-4 rounded-xl bg-red-500/10 px-4 py-3 text-sm font-black text-red-500">{error instanceof Error ? error.message : "Could not load kitchen stock."}</p>}
+
+      <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {filtered.map((item) => <KitchenStockCard key={item.id} item={item} updating={updatingId === item.id} onUpdate={onUpdate} />)}
+        {!filtered.length && <div className="rounded-xl border border-dashed border-zinc-200 p-8 text-center text-sm font-semibold text-zinc-500 dark:border-white/10">No stock items match this search.</div>}
+      </div>
+
+      <Card className="mt-6"><CardContent><div className="flex items-center gap-3"><History className="h-5 w-5 text-savoury-primary" /><div><h3 className="font-black">Recent stock activity</h3><p className="text-sm font-semibold text-zinc-500">Latest quantity and availability changes.</p></div></div><div className="mt-4 grid gap-2">{adjustments.slice(0, 10).map((entry) => <div key={entry.id} className="flex flex-col justify-between gap-2 rounded-xl bg-zinc-50 p-3 dark:bg-white/5 sm:flex-row sm:items-center"><div><p className="text-sm font-black">{entry.foodName}</p><p className="text-xs font-semibold text-zinc-500">{entry.previousQuantity} → {entry.newQuantity} · {entry.reason}</p></div><time className="text-xs font-bold text-zinc-400">{new Date(entry.createdAt).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}</time></div>)}{!adjustments.length && <div className="rounded-xl border border-dashed border-zinc-200 p-6 text-center text-sm font-semibold text-zinc-500 dark:border-white/10">No stock adjustments recorded yet.</div>}</div></CardContent></Card>
+    </section>
+  );
+}
+
+function KitchenStockCard({ item, updating, onUpdate }: { item: KitchenStockItem; updating: boolean; onUpdate: (item: KitchenStockItem, input: { quantityChange?: number; reason: string; available?: boolean }) => Promise<void> }) {
+  const [quantity, setQuantity] = useState(5);
+  const [reason, setReason] = useState("Kitchen restock");
+  const available = item.isAvailable && item.stockQuantity > 0;
+  return (
+    <Card className="overflow-hidden"><div className="grid grid-cols-[88px_1fr] gap-3 p-4"><img src={item.image} alt={item.name} className="h-20 w-[88px] rounded-xl object-cover" /><div className="min-w-0"><div className="flex items-start justify-between gap-2"><div><h3 className="truncate font-black">{item.name}</h3><p className="text-xs font-semibold text-zinc-500">{item.category}</p></div><span className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-black ${available ? "bg-emerald-500/10 text-emerald-600" : "bg-red-500/10 text-red-500"}`}>{available ? "Available" : "Out"}</span></div><p className={`mt-3 text-2xl font-black ${item.stockQuantity <= 5 ? "text-amber-500" : "text-savoury-primary"}`}>{item.stockQuantity}<span className="ml-1 text-xs text-zinc-400">in stock</span></p></div></div><CardContent className="space-y-3 border-t border-zinc-100 pt-4 dark:border-white/10"><div className="grid grid-cols-[100px_1fr] gap-2"><Input type="number" min={1} value={quantity} onChange={(event) => setQuantity(Math.max(1, Number(event.target.value || 1)))} /><Input value={reason} placeholder="Adjustment reason" onChange={(event) => setReason(event.target.value)} /></div><div className="grid grid-cols-2 gap-2"><Button disabled={updating || quantity < 1 || reason.trim().length < 3} onClick={() => void onUpdate(item, { quantityChange: quantity, reason })}><PackagePlus className="h-4 w-4" /> {updating ? "Updating..." : `Add ${quantity}`}</Button>{available ? <Button variant="outline" disabled={updating} onClick={() => void onUpdate(item, { reason: "Marked unavailable by kitchen", available: false })}><PackageX className="h-4 w-4" /> Mark Out</Button> : <Button variant="outline" disabled={updating || item.stockQuantity === 0} onClick={() => void onUpdate(item, { reason: "Returned to service by kitchen", available: true })}><Boxes className="h-4 w-4" /> Back in Stock</Button>}</div></CardContent></Card>
+  );
+}
+
+function StockMetric({ label, value, tone }: { label: string; value: number; tone: "amber" | "red" }) { return <div className={`min-w-28 rounded-xl px-4 py-3 ${tone === "amber" ? "bg-amber-500/10 text-amber-600" : "bg-red-500/10 text-red-500"}`}><p className="text-[10px] font-black uppercase">{label}</p><p className="text-xl font-black">{value}</p></div>; }
 
 function KitchenTicket({ order, now, updating, onMove }: { order: KitchenOrder; now: number; updating: boolean; onMove: (order: KitchenOrder, status: "preparing" | "ready" | "out_for_delivery") => void }) {
   return (

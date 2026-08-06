@@ -37,12 +37,34 @@ export interface KitchenActivityLog {
   orderNumber?: string;
   fromStatus?: string;
   toStatus?: string;
+  metadata?: Record<string, unknown>;
   createdAt: string;
 }
 
 export interface KitchenStaffActivity {
   staff: KitchenStaff;
   events: KitchenActivityLog[];
+}
+
+export interface KitchenStockItem {
+  id: string;
+  name: string;
+  image: string;
+  category: string;
+  stockQuantity: number;
+  isAvailable: boolean;
+}
+
+export interface KitchenStockAdjustment {
+  id: string;
+  foodId: string;
+  foodName: string;
+  previousQuantity: number;
+  newQuantity: number;
+  previousAvailability: boolean;
+  newAvailability: boolean;
+  reason: string;
+  createdAt: string;
 }
 
 export async function fetchKitchenOrders(): Promise<KitchenOrder[]> {
@@ -92,6 +114,55 @@ export async function updateKitchenOrderStatus(order: KitchenOrder, status: Excl
   if (error) throw error;
 }
 
+export async function fetchKitchenStock(): Promise<KitchenStockItem[]> {
+  if (!isSupabaseConfigured || !supabase) return [];
+  const { data, error } = await supabase
+    .from("foods")
+    .select("id, name, image_url, stock_quantity, is_available, categories(name)")
+    .order("name");
+  if (error) throw error;
+  return (data || []).map((food: any) => ({
+    id: food.id,
+    name: food.name,
+    image: food.image_url,
+    category: (Array.isArray(food.categories) ? food.categories[0] : food.categories)?.name || "Uncategorized",
+    stockQuantity: Number(food.stock_quantity || 0),
+    isAvailable: food.is_available === true,
+  }));
+}
+
+export async function adjustKitchenStock(input: { foodId: string; quantityChange?: number; reason: string; available?: boolean }) {
+  if (!isSupabaseConfigured || !supabase) throw new Error("Supabase is not configured.");
+  const { error } = await supabase.rpc("adjust_kitchen_food_stock", {
+    target_food_id: input.foodId,
+    quantity_change: input.quantityChange || 0,
+    adjustment_reason: input.reason.trim(),
+    available_override: input.available ?? null,
+  });
+  if (error) throw error;
+}
+
+export async function fetchKitchenStockAdjustments(): Promise<KitchenStockAdjustment[]> {
+  if (!isSupabaseConfigured || !supabase) return [];
+  const { data, error } = await supabase
+    .from("kitchen_stock_adjustments")
+    .select("id, food_id, previous_quantity, new_quantity, previous_availability, new_availability, reason, created_at, foods(name)")
+    .order("created_at", { ascending: false })
+    .limit(30);
+  if (error) throw error;
+  return (data || []).map((entry: any) => ({
+    id: entry.id,
+    foodId: entry.food_id,
+    foodName: (Array.isArray(entry.foods) ? entry.foods[0] : entry.foods)?.name || "Menu item",
+    previousQuantity: Number(entry.previous_quantity),
+    newQuantity: Number(entry.new_quantity),
+    previousAvailability: entry.previous_availability,
+    newAvailability: entry.new_availability,
+    reason: entry.reason,
+    createdAt: entry.created_at,
+  }));
+}
+
 export async function fetchKitchenStaff(): Promise<KitchenStaff[]> {
   if (!isSupabaseConfigured || !supabase) return [];
   const { data, error } = await supabase.from("kitchen_staff").select("id, full_name, email, phone, staff_id, status, must_change_password, created_at, last_login_at").order("created_at", { ascending: false });
@@ -137,6 +208,7 @@ export async function fetchKitchenStaffActivity(staffId: string): Promise<Kitche
       orderNumber: log.metadata?.order_number || undefined,
       fromStatus: log.from_status || undefined,
       toStatus: log.to_status || undefined,
+      metadata: log.metadata || {},
       createdAt: log.created_at,
     })),
   };

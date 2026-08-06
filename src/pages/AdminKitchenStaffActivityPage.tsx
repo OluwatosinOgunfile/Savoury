@@ -1,11 +1,11 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
-import { Activity, ArrowLeft, ChefHat, Clock3, LogIn, PackageCheck, Search, UserRound } from "lucide-react";
+import { Activity, ArrowLeft, Boxes, ChefHat, Clock3, LogIn, PackageCheck, Search, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
-import { fetchKitchenStaffActivity } from "@/services/kitchenService";
+import { fetchKitchenStaffActivity, type KitchenActivityLog } from "@/services/kitchenService";
 
 export function AdminKitchenStaffActivityPage() {
   const { staffId = "" } = useParams();
@@ -22,7 +22,7 @@ export function AdminKitchenStaffActivityPage() {
   const filtered = useMemo(() => {
     const term = query.trim().toLowerCase();
     return events.filter((event) => {
-      const matchesSearch = !term || [event.action, event.orderNumber || "", event.fromStatus || "", event.toStatus || ""].some((value) => value.toLowerCase().includes(term));
+      const matchesSearch = !term || [event.action, event.orderNumber || "", event.fromStatus || "", event.toStatus || "", String(event.metadata?.food_name || "")].some((value) => value.toLowerCase().includes(term));
       return matchesSearch && (source === "all" || event.orderSource === source);
     });
   }, [events, query, source]);
@@ -54,7 +54,7 @@ export function AdminKitchenStaffActivityPage() {
         <Card><CardContent>
           <div className="flex items-center gap-3"><Clock3 className="h-5 w-5 text-savoury-primary" /><h2 className="text-lg font-black">Activity timeline</h2></div>
           <div className="mt-4 grid gap-3 md:grid-cols-[1fr_200px]"><label className="flex h-12 items-center gap-3 rounded-xl border border-zinc-200 bg-white px-4 dark:border-white/10 dark:bg-zinc-950"><Search className="h-4 w-4 text-zinc-400" /><Input className="h-auto border-0 bg-transparent p-0 shadow-none dark:bg-transparent" placeholder="Search order or status" value={query} onChange={(event) => setQuery(event.target.value)} /></label><select className="h-12 rounded-xl border border-zinc-200 bg-white px-4 text-sm font-bold dark:border-white/10 dark:bg-zinc-950" value={source} onChange={(event) => setSource(event.target.value)}><option value="all">App and POS</option><option value="app">App orders</option><option value="pos">POS orders</option></select></div>
-          <div className="mt-5 grid gap-3">{filtered.map((event) => <article key={event.id} className="flex gap-3 rounded-xl border border-zinc-100 bg-zinc-50 p-4 dark:border-white/10 dark:bg-white/5"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-savoury-primary/10 text-savoury-primary">{event.action === "signed_in" ? <LogIn className="h-4 w-4" /> : <ChefHat className="h-4 w-4" />}</span><div><p className="font-black">{event.action === "signed_in" ? "Signed in" : `${event.fromStatus || "Order"} → ${event.toStatus || "Updated"}`}</p>{event.orderNumber && <p className="mt-1 text-sm font-semibold text-zinc-500">{event.orderNumber} · {event.orderSource?.toUpperCase()}</p>}<p className="mt-1 text-xs font-bold text-zinc-400">{formatDate(event.createdAt)}</p></div></article>)}{!filtered.length && <div className="rounded-xl border border-dashed border-zinc-200 p-8 text-center text-sm font-semibold text-zinc-500 dark:border-white/10">No kitchen activity matches this filter.</div>}</div>
+          <div className="mt-5 grid gap-3">{filtered.map((event) => <article key={event.id} className="flex gap-3 rounded-xl border border-zinc-100 bg-zinc-50 p-4 dark:border-white/10 dark:bg-white/5"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-savoury-primary/10 text-savoury-primary">{event.action === "signed_in" ? <LogIn className="h-4 w-4" /> : event.action === "adjusted_stock" ? <Boxes className="h-4 w-4" /> : <ChefHat className="h-4 w-4" />}</span><div><p className="font-black">{activityTitle(event)}</p>{activityDetails(event) && <p className="mt-1 text-sm font-semibold text-zinc-500">{activityDetails(event)}</p>}<p className="mt-1 text-xs font-bold text-zinc-400">{formatDate(event.createdAt)}</p></div></article>)}{!filtered.length && <div className="rounded-xl border border-dashed border-zinc-200 p-8 text-center text-sm font-semibold text-zinc-500 dark:border-white/10">No kitchen activity matches this filter.</div>}</div>
         </CardContent></Card>
       </section>
     </main>
@@ -64,3 +64,12 @@ export function AdminKitchenStaffActivityPage() {
 function Metric({ icon: Icon, label, value }: { icon: typeof Activity; label: string; value: string }) { return <Card><CardContent><Icon className="h-5 w-5 text-savoury-primary" /><p className="mt-3 text-xs font-black uppercase text-zinc-500">{label}</p><p className="mt-1 text-2xl font-black">{value}</p></CardContent></Card>; }
 function Detail({ label, value }: { label: string; value: string }) { return <div className="flex items-start justify-between gap-4 border-b border-zinc-100 pb-3 last:border-0 dark:border-white/10"><span className="font-semibold text-zinc-500">{label}</span><span className="text-right font-black">{value}</span></div>; }
 function formatDate(value: string) { return new Date(value).toLocaleString([], { dateStyle: "medium", timeStyle: "short" }); }
+function activityTitle(event: KitchenActivityLog) {
+  if (event.action === "signed_in") return "Signed in";
+  if (event.action === "adjusted_stock") return `Updated ${String(event.metadata?.food_name || "food stock")}`;
+  return `${event.fromStatus || "Order"} → ${event.toStatus || "Updated"}`;
+}
+function activityDetails(event: KitchenActivityLog) {
+  if (event.action === "adjusted_stock") return `${String(event.metadata?.previous_quantity ?? 0)} → ${String(event.metadata?.new_quantity ?? 0)} · ${String(event.metadata?.reason || "Stock adjustment")}`;
+  return event.orderNumber ? `${event.orderNumber} · ${event.orderSource?.toUpperCase()}` : "";
+}
