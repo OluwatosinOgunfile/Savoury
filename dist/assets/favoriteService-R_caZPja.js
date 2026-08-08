@@ -1,0 +1,1 @@
+import{q as a,t as o}from"./index-DgyFB6xA.js";async function n(r,e,s){if(!a||!o||!r)return;if(s){const{error:t}=await o.from("favorites").upsert({user_id:r,food_id:e},{onConflict:"user_id,food_id"});if(t)throw t;return}const{error:i}=await o.from("favorites").delete().eq("user_id",r).eq("food_id",e);if(i)throw i}export{n as s};

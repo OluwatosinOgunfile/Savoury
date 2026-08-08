@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -22,6 +22,7 @@ import { Card, CardContent } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { useAuth } from "@/hooks/useAuth";
 import { formatCurrency } from "@/lib/utils";
+import { dataUrlToImageFile, uploadBlobImage } from "@/services/blobImageService";
 import {
   accountKeys,
   deleteNotification,
@@ -248,16 +249,30 @@ function Stat({ label, value }: { label: string; value: number }) {
 function ProfilePanel({ profile, onSave }: { profile: ReturnType<typeof useAuth>["profile"]; onSave: (form: { fullName: string; phone?: string; avatarUrl?: string }) => Promise<void> }) {
   const [form, setForm] = useState({ fullName: "", phone: "", avatarUrl: "" });
   const [saving, setSaving] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [uploadError, setUploadError] = useState("");
+  const previewUrl = useRef<string | null>(null);
 
   useEffect(() => {
     setForm({ fullName: profile?.fullName || "", phone: profile?.phone || "", avatarUrl: profile?.avatarUrl || "" });
   }, [profile]);
 
+  useEffect(() => () => {
+    if (previewUrl.current) URL.revokeObjectURL(previewUrl.current);
+  }, []);
+
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     setSaving(true);
+    setUploadError("");
     try {
-      await onSave(form);
+      let avatarUrl = form.avatarUrl;
+      if (imageFile) avatarUrl = await uploadBlobImage(imageFile, "avatar");
+      else if (avatarUrl.startsWith("data:image/")) avatarUrl = await uploadBlobImage(await dataUrlToImageFile(avatarUrl, "profile-photo.jpg"), "avatar");
+      await onSave({ ...form, avatarUrl });
+      setImageFile(null);
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : "Could not upload the profile photo.");
     } finally {
       setSaving(false);
     }
@@ -265,11 +280,15 @@ function ProfilePanel({ profile, onSave }: { profile: ReturnType<typeof useAuth>
 
   const uploadPhoto = (file?: File) => {
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      setForm((current) => ({ ...current, avatarUrl: String(reader.result || "") }));
-    };
-    reader.readAsDataURL(file);
+    if (!file.type.startsWith("image/") || file.size > 12 * 1024 * 1024) {
+      setUploadError("Select an image smaller than 12 MB.");
+      return;
+    }
+    if (previewUrl.current) URL.revokeObjectURL(previewUrl.current);
+    previewUrl.current = URL.createObjectURL(file);
+    setImageFile(file);
+    setUploadError("");
+    setForm((current) => ({ ...current, avatarUrl: previewUrl.current || current.avatarUrl }));
   };
 
   return (
@@ -301,6 +320,7 @@ function ProfilePanel({ profile, onSave }: { profile: ReturnType<typeof useAuth>
         </div>
         <Info label="Email" value={profile?.email || "Not provided"} />
         <Info label="Loyalty points" value={`${profile?.loyaltyPoints || 0} points`} />
+        {uploadError && <p className="rounded-xl bg-red-500/10 px-4 py-3 text-sm font-bold text-red-500 md:col-span-2">{uploadError}</p>}
       </form>
     </Panel>
   );
